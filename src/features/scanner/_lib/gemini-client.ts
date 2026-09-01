@@ -1,8 +1,12 @@
-'use server';
-
 import { GoogleGenAI } from '@google/genai';
 
-const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY! });
+function getAIClient() {
+  const apiKey = process.env.GOOGLE_AI_API_KEY;
+  if (!apiKey) {
+    throw new Error('Chưa cấu hình GOOGLE_AI_API_KEY trên Vercel.');
+  }
+  return new GoogleGenAI({ apiKey });
+}
 
 const SYSTEM_PROMPT = `Bạn là một chuyên gia ngôn ngữ học tiếng Nhật. Nhiệm vụ của bạn là phân tích câu tiếng Nhật và trích xuất:
 1. Từ vựng: Chuyển về dạng từ điển (dictionary form), kèm furigana, kanji, nghĩa tiếng Việt, từ loại, cấp độ JLPT.
@@ -134,6 +138,7 @@ export async function analyzeJapanese(
 
   for (const model of models) {
     try {
+      const ai = getAIClient();
       const response = await ai.models.generateContent({
         model,
         contents: [{ role: 'user', parts }],
