@@ -84,7 +84,7 @@ export default async function SettingsPage() {
         <CardContent className="space-y-3 text-sm">
           <div className="flex items-center justify-between py-1.5 border-b text-xs">
             <span className="font-medium">AI Multimodal Engine:</span>
-            <span className="text-primary font-bold">Google Gemini 3.7 Flash</span>
+            <span className="text-primary font-bold">Google Gemini 3.6 Flash</span>
           </div>
           <div className="flex items-center justify-between py-1.5 border-b text-xs">
             <span className="font-medium">Thuật toán Spaced Repetition:</span>

@@ -105,7 +105,7 @@ export default async function HomePage() {
             <p className="text-lg sm:text-xl md:text-2xl text-slate-300/90 font-medium max-w-2xl mx-auto leading-relaxed">
               Biến mọi khung hình Anime, Manga và Game thành kho tàng kiến thức với{' '}
               <span className="text-white font-semibold underline decoration-rose-400/60 underline-offset-4">
-                Gemini 3.7 Flash
+                Gemini 3.6 Flash
               </span>{' '}
               & Thuật toán ôn tập ngắt quãng{' '}
               <span className="text-white font-semibold underline decoration-cyan-400/60 underline-offset-4">
@@ -207,7 +207,7 @@ export default async function HomePage() {
       {/* Footer */}
       <footer className="relative z-10 border-t border-white/10 py-6 text-center text-xs text-slate-400">
         <p>
-          Nihongo Jisho © 2026 • Được xây dựng với Google Gemini 3.7 Flash & Supabase • 100% Miễn phí
+          Nihongo Jisho © 2026 • Được xây dựng với Google Gemini 3.6 Flash & Supabase • 100% Miễn phí
         </p>
       </footer>
     </div>

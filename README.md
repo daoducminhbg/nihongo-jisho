@@ -1,7 +1,7 @@
 # Nihongo Jisho (日本語辞書) 🌸
 
 **Web App học tiếng Nhật thông minh từ Anime, Manga & Game dành cho người học từ N5 lên N3.**  
-Tích hợp AI nhận diện ngữ cảnh (**Google Gemini 3.7 Flash**), Từ điển cá nhân đa năng có che cột kiểm tra trí nhớ, Từ điển Hán tự tương tác nét vẽ (**KanjiVG**), và Hệ thống Flashcard thuật toán **FSRS (chuẩn Anki hiện đại nhất)**.
+Tích hợp AI nhận diện ngữ cảnh (**Google Gemini 3.6 Flash**), Từ điển cá nhân đa năng có che cột kiểm tra trí nhớ, Từ điển Hán tự tương tác nét vẽ (**KanjiVG**), và Hệ thống Flashcard thuật toán **FSRS (chuẩn Anki hiện đại nhất)**.
 
 100% Miễn phí trọn đời (Zero-cost Architecture).
 
@@ -9,7 +9,7 @@ Tích hợp AI nhận diện ngữ cảnh (**Google Gemini 3.7 Flash**), Từ đ
 
 ## ✨ Tính năng Nổi bật
 
-### 1. 📷 AI Vision Scanner & Extractor (Gemini 3.7 Flash)
+### 1. 📷 AI Vision Scanner & Extractor (Gemini 3.6 Flash)
 - **Tải ảnh hoặc dán trực tiếp (`Ctrl + V`)**: Hỗ trợ ảnh chụp màn hình anime, game, manga.
 - **Khung cắt ảnh trực quan (Crop Box)**: Khoanh đúng bóng thoại nhân vật để AI nhận diện chuẩn xác 100%.
 - **Nhập câu/văn bản trực tiếp**: Dán câu tiếng Nhật bất kỳ.
@@ -86,6 +86,6 @@ Mở trình duyệt tại: `http://localhost:3000`
 - **Frontend / Backend**: Next.js 16 (App Router, Server Actions, TypeScript)
 - **Styling**: Tailwind CSS + Shadcn UI + Framer Motion
 - **Database & Auth**: Supabase PostgreSQL 16 (`pg_trgm`, RLS)
-- **AI Engine**: Google Gemini 3.7 Flash API (Structured Outputs JSON Schema)
+- **AI Engine**: Google Gemini 3.6 Flash API (Structured Outputs JSON Schema)
 - **SRS Algorithm**: `ts-fsrs` (FSRS-5/6 Engine)
 - **Utilities**: `wanakana` (Romaji/Kana), `react-image-crop`, Web Speech API, KanjiVG SVG paths

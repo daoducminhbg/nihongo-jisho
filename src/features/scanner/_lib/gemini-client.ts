@@ -130,7 +130,7 @@ export async function analyzeJapanese(
   }
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3.7-flash',
+    model: 'gemini-3.6-flash',
     contents: [{ role: 'user', parts }],
     config: {
       systemInstruction: SYSTEM_PROMPT,
