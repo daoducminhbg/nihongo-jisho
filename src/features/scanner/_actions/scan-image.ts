@@ -1,5 +1,7 @@
 'use server';
 
+export const maxDuration = 60;
+
 import { createClient } from '@/lib/supabase/server';
 import { analyzeJapanese } from '../_lib/gemini-client';
 import type { ScanResult, ScannedVocab, ScannedKanji, ScannedGrammar } from '../_types/scan.types';

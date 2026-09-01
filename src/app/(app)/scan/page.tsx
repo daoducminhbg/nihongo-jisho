@@ -88,7 +88,7 @@ export default function ScanPage() {
           AI Scanner
         </h1>
         <p className="text-muted-foreground mt-1">
-          Trích xuất từ vựng, ngữ pháp và kanji từ ảnh Anime, Game hoặc văn bản tiếng Nhật bằng Gemini 3.7 Flash.
+          Trích xuất từ vựng, ngữ pháp và kanji từ ảnh Anime, Game hoặc văn bản tiếng Nhật bằng Gemini Flash AI tốc độ cao.
         </p>
       </div>
 
@@ -105,7 +105,7 @@ export default function ScanPage() {
           <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
             <LoadingSpinner className="w-10 h-10 text-primary" />
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold">Gemini 3.7 Flash đang phân tích...</h3>
+              <h3 className="text-lg font-semibold">Gemini Flash AI đang phân tích...</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Đang nhận diện ký tự, phân tích cú pháp, tra cứu âm Hán-Việt và đối chiếu với từ điển cá nhân của bạn.
               </p>

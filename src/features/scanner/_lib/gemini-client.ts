@@ -129,18 +129,31 @@ export async function analyzeJapanese(
     );
   }
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: [{ role: 'user', parts }],
-    config: {
-      systemInstruction: SYSTEM_PROMPT,
-      responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
-      temperature: 0.1,
-    },
-  });
+  const models = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash'];
+  let lastError: Error | null = null;
 
-  const text = response.text;
-  if (!text) throw new Error('No response from Gemini');
-  return JSON.parse(text) as GeminiScanResponse;
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{ role: 'user', parts }],
+        config: {
+          systemInstruction: SYSTEM_PROMPT,
+          responseMimeType: 'application/json',
+          responseSchema: RESPONSE_SCHEMA,
+          temperature: 0.1,
+        },
+      });
+
+      const text = response.text;
+      if (text) {
+        return JSON.parse(text) as GeminiScanResponse;
+      }
+    } catch (err) {
+      console.warn(`Model ${model} failed, trying fallback:`, err);
+      lastError = err instanceof Error ? err : new Error(String(err));
+    }
+  }
+
+  throw lastError || new Error('Không thể phân tích dữ liệu qua AI');
 }
