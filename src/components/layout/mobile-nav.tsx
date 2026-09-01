@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { ScanLine, BookOpen, Search, Layers, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -67,17 +68,27 @@ export function MobileNav() {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 transition-colors select-none py-1 relative',
+                'flex flex-col items-center justify-center gap-1 transition-all duration-200 select-none py-1 relative active:scale-95',
                 active
                   ? 'text-primary font-semibold'
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {active && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full" />
+                <motion.div
+                  layoutId="mobileNavIndicator"
+                  transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary rounded-b-full shadow-xs"
+                />
               )}
-              <Icon className={cn('h-5 w-5', active ? 'text-primary scale-110 transition-transform' : 'text-muted-foreground')} />
+              <Icon
+                className={cn(
+                  'h-5 w-5 transition-transform duration-200',
+                  active ? 'text-primary scale-110' : 'text-muted-foreground'
+                )}
+              />
               <span className="text-[11px] leading-none">{item.title}</span>
             </Link>
           );

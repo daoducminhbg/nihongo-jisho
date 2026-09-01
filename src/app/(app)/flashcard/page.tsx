@@ -1,5 +1,6 @@
 import { getQueueStats } from '@/features/flashcard/_actions/get-review-stats';
 import { DeckConfigForm } from '@/features/flashcard/_components/deck-config';
+import { FlashcardNavTabs } from '@/components/shared/flashcard-nav-tabs';
 import { Layers } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export default async function FlashcardPage() {
           Hệ thống lặp lại ngắt quãng thông minh giúp bạn ghi nhớ từ vựng, Hán tự và ngữ pháp lâu dài.
         </p>
       </div>
+
+      <FlashcardNavTabs />
 
       <DeckConfigForm
         initialCounts={{

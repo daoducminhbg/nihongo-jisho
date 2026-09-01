@@ -1,5 +1,6 @@
 import { getKanjis } from '@/features/dictionary/_actions/get-kanjis';
 import { KanjiList } from '@/features/dictionary/_components/kanji-list';
+import { DictionaryNavTabs } from '@/components/shared/dictionary-nav-tabs';
 import { Languages } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export default async function KanjiDictionaryPage() {
           Kho Hán tự cá nhân kèm âm Hán-Việt, âm On, âm Kun, nghĩa và animation thứ tự từng nét vẽ chuẩn KanjiVG.
         </p>
       </div>
+
+      <DictionaryNavTabs />
 
       <KanjiList initialKanjis={result.data} />
     </div>

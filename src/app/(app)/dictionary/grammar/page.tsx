@@ -1,5 +1,6 @@
 import { getGrammars } from '@/features/dictionary/_actions/get-grammars';
 import { GrammarList } from '@/features/dictionary/_components/grammar-list';
+import { DictionaryNavTabs } from '@/components/shared/dictionary-nav-tabs';
 import { GraduationCap } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export default async function GrammarDictionaryPage() {
           Tổng hợp các cấu trúc ngữ pháp bạn đã học, kèm sắc thái bối cảnh (anime slang, khẩu ngữ, trang trọng) và câu ví dụ.
         </p>
       </div>
+
+      <DictionaryNavTabs />
 
       <GrammarList initialGrammars={result.data} />
     </div>

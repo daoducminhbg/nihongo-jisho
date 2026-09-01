@@ -3,6 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 import { type User } from '@supabase/supabase-js';
 import {
   ScanLine,
@@ -221,17 +222,25 @@ export function Sidebar({ user, className }: SidebarProps) {
                   const linkContent = (
                     <Link
                       href={item.href}
+                      prefetch={true}
                       className={cn(
-                        'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+                        'relative flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors z-10',
                         active
-                          ? 'bg-primary text-primary-foreground font-semibold shadow-xs'
-                          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
+                          ? 'text-primary-foreground font-semibold'
+                          : 'text-muted-foreground hover:bg-accent/60 hover:text-accent-foreground',
                         isCollapsed && 'justify-center px-0'
                       )}
                     >
+                      {active && (
+                        <motion.div
+                          layoutId="sidebarActiveBackground"
+                          transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                          className="absolute inset-0 bg-primary rounded-lg -z-10 shadow-xs"
+                        />
+                      )}
                       <Icon
                         className={cn(
-                          'h-5 w-5 shrink-0',
+                          'h-5 w-5 shrink-0 transition-colors',
                           active
                             ? 'text-primary-foreground'
                             : 'text-muted-foreground'

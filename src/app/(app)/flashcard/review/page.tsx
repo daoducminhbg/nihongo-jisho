@@ -1,5 +1,6 @@
 import { getQueueStats } from '@/features/flashcard/_actions/get-review-stats';
 import { ReviewDashboard } from '@/features/flashcard/_components/review-dashboard';
+import { FlashcardNavTabs } from '@/components/shared/flashcard-nav-tabs';
 import { RotateCcw } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export default async function FlashcardReviewPage() {
           Theo dõi số lượng thẻ đến hạn theo ngày và tiến độ củng cố trí nhớ với mô hình FSRS.
         </p>
       </div>
+
+      <FlashcardNavTabs />
 
       <ReviewDashboard stats={stats} />
     </div>

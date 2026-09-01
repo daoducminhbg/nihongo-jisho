@@ -1,5 +1,6 @@
 import { getVocabularies } from '@/features/dictionary/_actions/get-vocabularies';
 import { VocabTable } from '@/features/dictionary/_components/vocab-table';
+import { DictionaryNavTabs } from '@/components/shared/dictionary-nav-tabs';
 import { BookOpen } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,6 +19,8 @@ export default async function DictionaryPage() {
           Kho từ vựng cá nhân được thu thập từ Anime, Manga & Game. Bạn có thể ẩn/hiện cột để tự kiểm tra trí nhớ.
         </p>
       </div>
+
+      <DictionaryNavTabs />
 
       <VocabTable initialData={result.data} />
     </div>
