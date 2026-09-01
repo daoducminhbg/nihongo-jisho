@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ImageUploader } from '@/features/scanner/_components/image-uploader';
@@ -51,14 +51,38 @@ export default function ScanPage() {
     await runScan({ type: 'text', text });
   };
 
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Elapsed timer during analysis
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isAnalyzing) {
+      setElapsedSeconds(0);
+      interval = setInterval(() => {
+        setElapsedSeconds((s) => s + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isAnalyzing]);
+
   const runScan = async (
     input: { type: 'text'; text: string } | { type: 'image'; base64: string; mimeType: string }
   ) => {
     setIsAnalyzing(true);
     setError(null);
 
+    const timeoutPromise = new Promise<{ success: false; error: string }>((_, reject) =>
+      setTimeout(
+        () =>
+          reject(
+            new Error('Hết thời gian chờ phản hồi (20 giây). Vui lòng nhấn Ctrl + F5 để cập nhật bản mới nhất và thử lại.')
+          ),
+        20000
+      )
+    );
+
     try {
-      const res = await scanContent(input);
+      const res = await Promise.race([scanContent(input), timeoutPromise]);
       if (res.success) {
         setScanResult(res.data);
       } else {
@@ -69,6 +93,11 @@ export default function ScanPage() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleCancel = () => {
+    setIsAnalyzing(false);
+    setError('Đã hủy thao tác phân tích.');
   };
 
   const handleReset = () => {
@@ -93,9 +122,17 @@ export default function ScanPage() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <span>{error}</span>
+        <div className="flex items-center justify-between p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg text-sm">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="text-xs underline hover:no-underline font-semibold ml-2 cursor-pointer"
+          >
+            Đóng
+          </button>
         </div>
       )}
 
@@ -105,11 +142,19 @@ export default function ScanPage() {
           <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
             <LoadingSpinner className="w-10 h-10 text-primary" />
             <div className="space-y-1">
-              <h3 className="text-lg font-semibold">Gemini Flash AI đang phân tích...</h3>
+              <h3 className="text-lg font-semibold">
+                Gemini Flash AI đang phân tích... ({elapsedSeconds}s)
+              </h3>
               <p className="text-sm text-muted-foreground max-w-sm">
                 Đang nhận diện ký tự, phân tích cú pháp, tra cứu âm Hán-Việt và đối chiếu với từ điển cá nhân của bạn.
               </p>
             </div>
+            <button
+              onClick={handleCancel}
+              className="mt-2 text-xs px-3 py-1.5 rounded-md border border-muted-foreground/30 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              Hủy bỏ thao tác
+            </button>
           </CardContent>
         </Card>
       )}
