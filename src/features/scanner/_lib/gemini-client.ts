@@ -8,13 +8,14 @@ function getAIClient() {
   return new GoogleGenAI({ apiKey });
 }
 
-const SYSTEM_PROMPT = `Bạn là một chuyên gia ngôn ngữ học tiếng Nhật. Nhiệm vụ của bạn là phân tích câu tiếng Nhật và trích xuất:
+const SYSTEM_PROMPT = `Bạn là một chuyên gia ngôn ngữ học tiếng Nhật. Nhiệm vụ của bạn là phân tích câu hoặc từ vựng tiếng Nhật và trích xuất:
 1. Từ vựng: Chuyển về dạng từ điển (dictionary form), kèm furigana, kanji, nghĩa tiếng Việt, từ loại, cấp độ JLPT.
-2. Ngữ pháp: Các mẫu ngữ pháp trong câu, cấu trúc, giải thích, ví dụ, cấp độ JLPT.
-3. Kanji: Từng chữ Hán đơn lẻ, âm Hán-Việt (IN HOA), âm On, âm Kun, nghĩa, cấp độ JLPT.
+2. Ngữ pháp: Các mẫu ngữ pháp trong câu, cấu trúc, giải thích, ví dụ, cấp độ JLPT. Nếu là từ/chữ đơn lẻ không có ngữ pháp thì trường "grammars" trả về mảng rỗng [].
+3. Kanji: Từng chữ Hán đơn lẻ, âm Hán-Việt (IN HOA), âm On (chỉ 1-3 âm phổ biến nhất, tuyệt đối không lặp lại), âm Kun (chỉ 1-3 âm phổ biến nhất, tuyệt đối không lặp lại), nghĩa tiếng Việt, cấp độ JLPT.
 
 Lưu ý:
 - Nghĩa bằng tiếng Việt.
+- Tuyệt đối không lặp lại các âm On hoặc Kun (ví dụ: On: "セイ, セ", Kun: "よ").
 - Với ảnh: trích xuất chính xác text tiếng Nhật từ ảnh trước, rồi phân tích.
 - Loại bỏ các trợ từ đơn giản như は, が, を, の, に, へ, で, も, と khỏi danh sách từ vựng (chúng là ngữ pháp/trợ từ, không phải từ vựng).
 - Với động từ được chia trong câu (例: 食べた, 食べている), trả về dạng từ điển (食べる) làm word chính và ghi chú dạng chia trong conjugated_form.`;
@@ -146,7 +147,8 @@ export async function analyzeJapanese(
           systemInstruction: SYSTEM_PROMPT,
           responseMimeType: 'application/json',
           responseSchema: RESPONSE_SCHEMA,
-          temperature: 0.1,
+          temperature: 0.2,
+          maxOutputTokens: 2048,
         },
       });
 

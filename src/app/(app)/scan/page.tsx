@@ -75,9 +75,9 @@ export default function ScanPage() {
       setTimeout(
         () =>
           reject(
-            new Error('Hết thời gian chờ phản hồi (20 giây). Vui lòng nhấn Ctrl + F5 để cập nhật bản mới nhất và thử lại.')
+            new Error('Hết thời gian chờ phản hồi (35 giây). Vui lòng thử lại.')
           ),
-        20000
+        35000
       )
     );
 
