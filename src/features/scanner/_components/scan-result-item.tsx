@@ -51,22 +51,27 @@ export function ScanResultItem({ item, type, checked, onToggle }: ScanResultItem
 }
 
 function VocabDetails({ item }: { item: ScannedVocab }) {
+  const isConjugated = item.conjugated_form && item.conjugated_form !== item.word;
+
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-1">
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-lg font-bold">{item.word}</span>
+        <span className="text-lg font-bold text-foreground">{item.word}</span>
         {item.furigana && (
-          <span className="text-sm text-muted-foreground">【{item.furigana}】</span>
+          <span className="text-sm font-medium text-muted-foreground">【{item.furigana}】</span>
         )}
-        {item.conjugated_form && (
-          <span className="text-xs text-muted-foreground">
-            → {item.conjugated_form}
+        {isConjugated && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 font-medium">
+            Trong câu: <span className="font-semibold">{item.conjugated_form}</span>
           </span>
         )}
       </div>
-      <p className="text-sm">{item.meaning}</p>
+      <p className="text-sm font-medium text-foreground/90">{item.meaning}</p>
       {item.word_type && (
-        <p className="text-xs text-muted-foreground">{item.word_type}</p>
+        <p className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 inline-block" />
+          {item.word_type}
+        </p>
       )}
     </div>
   );
@@ -74,10 +79,10 @@ function VocabDetails({ item }: { item: ScannedVocab }) {
 
 function KanjiDetails({ item }: { item: ScannedKanji }) {
   return (
-    <div className="space-y-0.5">
+    <div className="space-y-1">
       <div className="flex flex-wrap items-baseline gap-2">
-        <span className="text-2xl font-bold">{item.character}</span>
-        <span className="text-sm font-medium text-primary">{item.han_viet}</span>
+        <span className="text-2xl font-bold font-japanese">{item.character}</span>
+        <span className="text-sm font-bold text-primary tracking-wide">{item.han_viet}</span>
       </div>
       <p className="text-sm">{item.meaning}</p>
       <div className="flex flex-wrap gap-x-3 text-xs text-muted-foreground">
@@ -99,22 +104,28 @@ function KanjiDetails({ item }: { item: ScannedKanji }) {
 
 function GrammarDetails({ item }: { item: ScannedGrammar }) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-base font-bold">{item.title}</p>
+    <div className="space-y-2">
+      <p className="text-base font-bold text-primary">{item.title}</p>
       {item.structure && (
-        <p className="text-sm font-mono text-primary">{item.structure}</p>
+        <div className="inline-block px-2.5 py-1 rounded-md bg-muted text-xs font-mono font-medium text-primary border border-border/40">
+          Cấu trúc: {item.structure}
+        </div>
       )}
-      <p className="text-sm">{item.explanation}</p>
+      <div className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line bg-muted/20 p-2.5 rounded-lg border border-border/30">
+        {item.explanation}
+      </div>
       {item.example_sentence && (
-        <div className="mt-1 rounded bg-muted/50 p-2 text-xs">
-          <p className="font-medium">{item.example_sentence}</p>
+        <div className="rounded-lg bg-muted/40 p-2.5 text-xs space-y-1 border border-border/30">
+          <p className="font-semibold text-foreground">{item.example_sentence}</p>
           {item.example_meaning && (
             <p className="text-muted-foreground">{item.example_meaning}</p>
           )}
         </div>
       )}
       {item.nuance && (
-        <p className="text-xs text-muted-foreground italic">🎯 {item.nuance}</p>
+        <p className="text-xs text-amber-500/90 dark:text-amber-400/90 italic flex items-start gap-1.5">
+          <span>💡</span> <span>{item.nuance}</span>
+        </p>
       )}
     </div>
   );
