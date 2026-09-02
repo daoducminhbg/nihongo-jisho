@@ -79,12 +79,20 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
   // Auto-speak on flip
   useEffect(() => {
     if (isFlipped && currentCard) {
-      const textToSpeak =
-        currentCard.itemType === 'vocab'
-          ? currentCard.vocab?.word
-          : currentCard.itemType === 'grammar'
-          ? currentCard.grammar?.title
-          : null;
+      let textToSpeak: string | null = null;
+
+      if (currentCard.itemType === 'vocab') {
+        textToSpeak = currentCard.vocab?.word || null;
+      } else if (currentCard.itemType === 'grammar') {
+        // Ưu tiên đọc câu ví dụ tiếng Nhật thay vì đọc tiêu đề có chứa tiếng Việt
+        const exampleSentence = currentCard.grammar?.examples?.[0]?.sentence;
+        if (exampleSentence) {
+          textToSpeak = exampleSentence;
+        } else if (currentCard.grammar?.title) {
+          // Fallback: chỉ đọc phần tiếng Nhật, loại bỏ hoàn toàn phần giải thích tiếng Việt trong ngoặc
+          textToSpeak = currentCard.grammar.title.replace(/\s*[\(\[（【].*?[\)\]）】]/g, '').trim() || null;
+        }
+      }
 
       if (textToSpeak && typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();

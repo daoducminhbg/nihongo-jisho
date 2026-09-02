@@ -92,8 +92,9 @@ export function CardFront({ item, direction }: CardFrontProps) {
                   </p>
                 )}
                 {item.grammar.examples && item.grammar.examples.length > 0 && (
-                  <div className="p-3 bg-muted/40 rounded-lg text-sm font-japanese text-left mt-2">
-                    <p className="font-medium">{item.grammar.examples[0].sentence}</p>
+                  <div className="p-3 bg-muted/40 rounded-lg text-sm font-japanese text-left mt-2 flex items-center justify-between gap-2">
+                    <p className="font-medium flex-1">{item.grammar.examples[0].sentence}</p>
+                    <AudioButton text={item.grammar.examples[0].sentence} size="icon" className="h-6 w-6 shrink-0" />
                   </div>
                 )}
               </>
