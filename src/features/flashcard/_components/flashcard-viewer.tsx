@@ -11,6 +11,7 @@ import { isGraduatedForToday } from '../_lib/fsrs-engine';
 import { RotateCw, CheckCircle2, Clock, Zap, Sparkles } from 'lucide-react';
 import type { FlashcardItem, CardDirection, SessionStats } from '../_types/flashcard.types';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface FlashcardViewerProps {
   cards: FlashcardItem[];
@@ -66,6 +67,8 @@ function getNextCardFromQueues(
 }
 
 export function FlashcardViewer({ cards: initialCards, direction, onFinish }: FlashcardViewerProps) {
+  const router = useRouter();
+
   // ── Initialize Anki Queues & First Card Synchronously ──
   const initialData = useRef(() => {
     const newQ = initialCards.filter((c) => c.srsCard.state === 'new');
@@ -313,16 +316,25 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <Link href="/flashcard" className="flex-1">
-            <Button variant="outline" className="w-full">
-              Học thêm bộ khác
-            </Button>
-          </Link>
-          <Link href="/flashcard/review" className="flex-1">
-            <Button className="w-full">
-              Xem tiến độ học
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="flex-1 w-full"
+            onClick={() => {
+              router.push('/flashcard');
+              router.refresh();
+            }}
+          >
+            Học thêm bộ khác
+          </Button>
+          <Button
+            className="flex-1 w-full"
+            onClick={() => {
+              router.push('/flashcard/review');
+              router.refresh();
+            }}
+          >
+            Xem tiến độ học
+          </Button>
         </div>
       </div>
     );

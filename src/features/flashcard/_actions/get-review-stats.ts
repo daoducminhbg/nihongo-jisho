@@ -28,12 +28,21 @@ export async function getQueueStats(): Promise<{
     const now = new Date().toISOString();
 
     const [dueResult, newResult, learningResult, totalResult] = await Promise.all([
+      // 1. Thẻ ôn tập định kỳ đã tốt nghiệp và đến hạn hôm nay
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id).in('state', ['learning', 'review', 'relearning']).lte('due', now),
+        .eq('user_id', user.id)
+        .eq('state', 'review')
+        .lte('due', now),
+      // 2. Thẻ mới chưa học lần nào
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id).eq('state', 'new'),
+        .eq('user_id', user.id)
+        .eq('state', 'new'),
+      // 3. Thẻ đang học đến hạn (chu kỳ ngắn trong ngày)
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id).in('state', ['learning', 'relearning']),
+        .eq('user_id', user.id)
+        .in('state', ['learning', 'relearning'])
+        .lte('due', now),
+      // 4. Tổng số thẻ trong kho
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id),
     ]);

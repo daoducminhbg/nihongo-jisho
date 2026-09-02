@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
 import { calculateAnkiSchedule, formatInterval } from '../_lib/fsrs-engine';
 import type { SRSCard } from '@/types/database.types';
 
@@ -74,6 +75,10 @@ export async function submitCardReview(
       state: updated.state,
       last_review: now.toISOString(),
     };
+
+    revalidatePath('/flashcard');
+    revalidatePath('/flashcard/study');
+    revalidatePath('/flashcard/review');
 
     return {
       success: true,

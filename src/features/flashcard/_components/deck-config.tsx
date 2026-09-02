@@ -18,7 +18,7 @@ export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
   const router = useRouter();
 
   const [itemTypes, setItemTypes] = useState<ItemType[]>(['vocab', 'kanji', 'grammar']);
-  const [jlptLevels, setJlptLevels] = useState<JLPTLevel[]>(['N5', 'N4', 'N3']);
+  const [jlptLevels, setJlptLevels] = useState<JLPTLevel[]>(['N5', 'N4', 'N3', 'N2', 'N1']);
   const [direction, setDirection] = useState<CardDirection>('JP_TO_VN');
   const [mode, setMode] = useState<'all' | 'due_only' | 'new_only'>('all');
   const [newLimit, setNewLimit] = useState<number | 'all'>(20);

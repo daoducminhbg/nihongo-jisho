@@ -91,25 +91,27 @@ export async function getStudyCards(config: DeckConfig): Promise<{
     const kanjiIds = cards.filter((c) => c.item_type === 'kanji').map((c) => c.item_id);
     const grammarIds = cards.filter((c) => c.item_type === 'grammar').map((c) => c.item_id);
 
+    const isAllJlpt = !config.jlptLevels || config.jlptLevels.length >= 5 || config.jlptLevels.length === 0;
+
     const [vocabMap, kanjiMap, grammarMap] = await Promise.all([
       (async () => {
         if (vocabIds.length === 0) return new Map<string, Vocabulary>();
         let q = supabase.from('vocabularies').select('*').in('id', vocabIds);
-        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        if (!isAllJlpt) q = q.in('jlpt_level', config.jlptLevels);
         const { data } = await q;
         return new Map(((data as Vocabulary[]) || []).map(v => [v.id, v]));
       })(),
       (async () => {
         if (kanjiIds.length === 0) return new Map<string, Kanji>();
         let q = supabase.from('kanjis').select('*').in('id', kanjiIds);
-        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        if (!isAllJlpt) q = q.in('jlpt_level', config.jlptLevels);
         const { data } = await q;
         return new Map(((data as Kanji[]) || []).map(k => [k.id, k]));
       })(),
       (async () => {
         if (grammarIds.length === 0) return new Map<string, Grammar>();
         let q = supabase.from('grammars').select('*').in('id', grammarIds);
-        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        if (!isAllJlpt) q = q.in('jlpt_level', config.jlptLevels);
         const { data } = await q;
         return new Map(((data as Grammar[]) || []).map(g => [g.id, g]));
       })(),
