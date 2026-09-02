@@ -19,33 +19,69 @@ export async function getStudyCards(config: DeckConfig): Promise<{
       return { success: false, cards: [], error: 'Chưa đăng nhập' };
     }
 
-    let query = supabase
-      .from('srs_cards')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('item_type', config.itemTypes);
-
     const now = new Date().toISOString();
+    let cards: SRSCard[] = [];
 
-    if (config.mode === 'due_only') {
-      // Due review cards or learning cards
-      query = query
-        .in('state', ['learning', 'review', 'relearning'])
-        .lte('due', now);
+    const baseQuery = () =>
+      supabase
+        .from('srs_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('item_type', config.itemTypes);
+
+    if (config.mode === 'all') {
+      // Anki mode: Fetch Due reviews + New cards
+      const newCardLimit =
+        config.newLimit === 'all' ? 300 : (typeof config.newLimit === 'number' ? config.newLimit : (config.limit || 20));
+      const reviewCardLimit =
+        config.reviewLimit === 'all' ? 300 : (typeof config.reviewLimit === 'number' ? config.reviewLimit : 50);
+
+      const [dueRes, newRes] = await Promise.all([
+        baseQuery()
+          .in('state', ['learning', 'review', 'relearning'])
+          .lte('due', now)
+          .order('due', { ascending: true })
+          .limit(reviewCardLimit),
+        newCardLimit > 0
+          ? baseQuery()
+              .eq('state', 'new')
+              .order('created_at', { ascending: true })
+              .limit(newCardLimit)
+          : Promise.resolve({ data: [] as SRSCard[], error: null }),
+      ]);
+
+      if (dueRes.error) throw dueRes.error;
+      if (newRes.error) throw newRes.error;
+
+      // Anki queue order: Due reviews first, followed by New cards
+      cards = [...((dueRes.data as SRSCard[]) || []), ...((newRes.data as SRSCard[]) || [])];
     } else if (config.mode === 'new_only') {
-      // Only unstudied new cards
-      query = query.eq('state', 'new');
+      // New cards only
+      const newCardLimit =
+        config.newLimit === 'all' ? 300 : (typeof config.newLimit === 'number' ? config.newLimit : (config.limit || 30));
+
+      const { data, error } = await baseQuery()
+        .eq('state', 'new')
+        .order('created_at', { ascending: true })
+        .limit(newCardLimit);
+
+      if (error) throw error;
+      cards = (data as SRSCard[]) || [];
     } else {
-      // All cards that are due OR new
-      query = query.or(`state.eq.new,and(due.lte.${now},state.in.(learning,review,relearning))`);
+      // Due cards only
+      const reviewCardLimit =
+        config.reviewLimit === 'all' ? 300 : (typeof config.reviewLimit === 'number' ? config.reviewLimit : (config.limit || 50));
+
+      const { data, error } = await baseQuery()
+        .in('state', ['learning', 'review', 'relearning'])
+        .lte('due', now)
+        .order('due', { ascending: true })
+        .limit(reviewCardLimit);
+
+      if (error) throw error;
+      cards = (data as SRSCard[]) || [];
     }
 
-    query = query.order('due', { ascending: true }).limit(config.limit || 30);
-
-    const { data: srsData, error: srsError } = await query;
-    if (srsError) throw srsError;
-
-    const cards = (srsData as SRSCard[]) || [];
     if (cards.length === 0) {
       return { success: true, cards: [] };
     }

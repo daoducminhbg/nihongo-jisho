@@ -52,6 +52,7 @@ export interface SRSCard {
   scheduled_days: number;
   reps: number;
   lapses: number;
+  learning_steps?: number;
   last_review: string | null;
   created_at: string;
 }

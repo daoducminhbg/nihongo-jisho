@@ -16,6 +16,7 @@ export async function submitCardReview(
   rating: 1 | 2 | 3 | 4
 ): Promise<{
   success: boolean;
+  card?: SRSCard;
   nextDue?: string;
   nextInterval?: string;
   error?: string;
@@ -68,6 +69,7 @@ export async function submitCardReview(
         scheduled_days: updatedCard.scheduled_days,
         reps: updatedCard.reps,
         lapses: updatedCard.lapses,
+        learning_steps: updatedCard.learning_steps,
         state: fromFSRSState(updatedCard.state),
         last_review: now.toISOString(),
       })
@@ -76,8 +78,23 @@ export async function submitCardReview(
 
     if (updateError) throw updateError;
 
+    const updatedDbCard: SRSCard = {
+      ...(dbCard as SRSCard),
+      due: updatedCard.due.toISOString(),
+      stability: updatedCard.stability,
+      difficulty: updatedCard.difficulty,
+      elapsed_days: updatedCard.elapsed_days,
+      scheduled_days: updatedCard.scheduled_days,
+      reps: updatedCard.reps,
+      lapses: updatedCard.lapses,
+      learning_steps: updatedCard.learning_steps,
+      state: fromFSRSState(updatedCard.state),
+      last_review: now.toISOString(),
+    };
+
     return {
       success: true,
+      card: updatedDbCard,
       nextDue: updatedCard.due.toISOString(),
       nextInterval: formatInterval(updatedCard.due, now),
     };

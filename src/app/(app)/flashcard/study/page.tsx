@@ -16,6 +16,8 @@ interface StudyPageProps {
     direction?: string;
     mode?: string;
     limit?: string;
+    newLimit?: string;
+    reviewLimit?: string;
   }>;
 }
 
@@ -33,8 +35,16 @@ export default async function FlashcardStudyPage({ searchParams }: StudyPageProp
   const direction: CardDirection =
     params.direction === 'VN_TO_JP' ? 'VN_TO_JP' : 'JP_TO_VN';
 
-  const mode = (params.mode as 'due_only' | 'all' | 'new_only') || 'due_only';
-  const limit = params.limit ? parseInt(params.limit, 10) : 20;
+  const mode = (params.mode as 'due_only' | 'all' | 'new_only') || 'all';
+  const limit = params.limit ? parseInt(params.limit, 10) : 50;
+
+  const newLimit = params.newLimit === 'all'
+    ? 'all'
+    : params.newLimit ? parseInt(params.newLimit, 10) : 20;
+
+  const reviewLimit = params.reviewLimit === 'all'
+    ? 'all'
+    : params.reviewLimit ? parseInt(params.reviewLimit, 10) : 'all';
 
   const { success, cards, error } = await getStudyCards({
     itemTypes,
@@ -42,6 +52,8 @@ export default async function FlashcardStudyPage({ searchParams }: StudyPageProp
     direction,
     mode,
     limit,
+    newLimit,
+    reviewLimit,
   });
 
   return (

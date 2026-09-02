@@ -13,7 +13,7 @@ import type { SRSCard } from '@/types/database.types';
 const scheduler = fsrs();
 
 /**
- * Maps database SRSCard to ts-fsrs Card interface
+ * Maps database SRSCard to ts-fsrs Card interface, restoring learning steps
  */
 export function toFSRSCard(dbCard: SRSCard): Card {
   let state = State.New;
@@ -23,15 +23,24 @@ export function toFSRSCard(dbCard: SRSCard): Card {
 
   const baseCard = createEmptyCard(new Date(dbCard.due));
 
+  // Determine learning_steps:
+  // If stored in database, use it directly.
+  // Otherwise if in Learning state with stability >= 1.0, infer step 1.
+  let learning_steps = dbCard.learning_steps ?? 0;
+  if (learning_steps === 0 && state === State.Learning && dbCard.reps >= 1 && (dbCard.stability ?? 0) >= 1.0) {
+    learning_steps = 1;
+  }
+
   return {
     ...baseCard,
     due: new Date(dbCard.due),
-    stability: dbCard.stability,
-    difficulty: dbCard.difficulty,
-    elapsed_days: dbCard.elapsed_days,
-    scheduled_days: dbCard.scheduled_days,
-    reps: dbCard.reps,
-    lapses: dbCard.lapses,
+    stability: dbCard.stability ?? 0,
+    difficulty: dbCard.difficulty ?? 0,
+    elapsed_days: dbCard.elapsed_days ?? 0,
+    scheduled_days: dbCard.scheduled_days ?? 0,
+    reps: dbCard.reps ?? 0,
+    lapses: dbCard.lapses ?? 0,
+    learning_steps,
     state,
     last_review: dbCard.last_review ? new Date(dbCard.last_review) : undefined,
   };
@@ -80,6 +89,17 @@ export function formatInterval(due: Date, now: Date = new Date()): string {
   const diffMonths = Math.round(diffDays / 30);
   if (diffMonths < 12) return `${diffMonths} tháng`;
   return `${(diffDays / 365).toFixed(1)} năm`;
+}
+
+/**
+ * Checks if a card's due date is scheduled for tomorrow or later,
+ * meaning it has graduated and leaves today's session queue.
+ */
+export function isGraduatedForToday(due: Date, now: Date = new Date()): boolean {
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  return due.getTime() >= tomorrow.getTime() || (due.getTime() - now.getTime()) >= 16 * 3600 * 1000;
 }
 
 export { Rating, State, createEmptyCard };

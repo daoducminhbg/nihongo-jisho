@@ -9,6 +9,8 @@ export interface DeckConfig {
   direction: CardDirection;
   limit: number;
   mode: 'due_only' | 'all' | 'new_only';
+  newLimit?: number | 'all';
+  reviewLimit?: number | 'all';
 }
 
 export interface FlashcardItem {

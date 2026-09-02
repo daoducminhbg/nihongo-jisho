@@ -26,6 +26,7 @@ export default async function FlashcardPage() {
         initialCounts={{
           due: stats.dueCount,
           newCount: stats.newCount,
+          learning: stats.learningCount,
           total: stats.totalCards,
         }}
       />

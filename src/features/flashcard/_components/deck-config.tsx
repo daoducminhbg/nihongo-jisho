@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Layers, Play, Sparkles, ArrowLeftRight } from 'lucide-react';
+import { Layers, Play, ArrowLeftRight, Sparkles, Clock, BookOpen } from 'lucide-react';
 import type { CardDirection } from '../_types/flashcard.types';
 import type { ItemType, JLPTLevel } from '@/lib/constants';
 
 interface DeckConfigFormProps {
-  initialCounts?: { due: number; newCount: number; total: number };
+  initialCounts?: { due: number; newCount: number; learning?: number; total: number };
 }
 
 export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
@@ -20,8 +20,9 @@ export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
   const [itemTypes, setItemTypes] = useState<ItemType[]>(['vocab', 'kanji', 'grammar']);
   const [jlptLevels, setJlptLevels] = useState<JLPTLevel[]>(['N5', 'N4', 'N3']);
   const [direction, setDirection] = useState<CardDirection>('JP_TO_VN');
-  const [mode, setMode] = useState<'due_only' | 'all' | 'new_only'>('due_only');
-  const [limit, setLimit] = useState(20);
+  const [mode, setMode] = useState<'all' | 'due_only' | 'new_only'>('all');
+  const [newLimit, setNewLimit] = useState<number | 'all'>(20);
+  const [reviewLimit, setReviewLimit] = useState<number | 'all'>('all');
 
   const toggleItemType = (type: ItemType) => {
     setItemTypes((prev) =>
@@ -49,22 +50,46 @@ export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
       jlpt: jlptLevels.join(','),
       direction,
       mode,
-      limit: limit.toString(),
+      newLimit: newLimit.toString(),
+      reviewLimit: reviewLimit.toString(),
+      limit: '50',
     });
 
     router.push(`/flashcard/study?${params.toString()}`);
   };
+
+  const dueCount = initialCounts?.due ?? 0;
+  const newCount = initialCounts?.newCount ?? 0;
+  const learningCount = initialCounts?.learning ?? 0;
 
   return (
     <Card className="max-w-xl mx-auto shadow-sm">
       <CardHeader>
         <CardTitle className="text-xl flex items-center gap-2">
           <Layers className="w-5 h-5 text-primary" />
-          Cấu hình phiên học Flashcard
+          Cấu hình phiên học Flashcard (Anki FSRS)
         </CardTitle>
         <CardDescription>
-          Tùy chỉnh nội dung, chiều lật thẻ và thuật toán FSRS cho phiên ôn tập của bạn
+          Hệ thống Spaced Repetition kiểu Anki: Hẹn giờ 1m - 10m trong ngày, ghi nhớ dài hạn sau khi tốt nghiệp
         </CardDescription>
+
+        {/* Anki 3-Counter Badge Row */}
+        {initialCounts && (
+          <div className="grid grid-cols-3 gap-2 pt-3">
+            <div className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-center">
+              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">Mới</span>
+              <span className="text-xl font-extrabold text-blue-700 dark:text-blue-300">{newCount}</span>
+            </div>
+            <div className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+              <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">Đang học</span>
+              <span className="text-xl font-extrabold text-amber-700 dark:text-amber-300">{learningCount}</span>
+            </div>
+            <div className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-green-500/10 border border-green-500/20 text-center">
+              <span className="text-xs font-semibold text-green-600 dark:text-green-400">Đến hạn ôn</span>
+              <span className="text-xl font-extrabold text-green-700 dark:text-green-300">{dueCount}</span>
+            </div>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -147,61 +172,111 @@ export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
           </div>
         </div>
 
-        {/* 4. Study Mode */}
+        {/* 4. Study Mode (Anki-style) */}
         <div className="space-y-3">
-          <Label className="text-sm font-semibold">4. Chế độ học:</Label>
+          <Label className="text-sm font-semibold">4. Chế độ học (Kiểu Anki):</Label>
           <div className="grid grid-cols-3 gap-2">
             {[
               {
+                value: 'all',
+                title: 'Ôn tập + Thẻ mới',
+                desc: 'Tiêu chuẩn Anki',
+                icon: Sparkles,
+              },
+              {
                 value: 'due_only',
-                title: 'Đến hạn',
-                desc: initialCounts ? `${initialCounts.due} thẻ` : 'Ôn tập',
+                title: 'Chỉ ôn thẻ cũ',
+                desc: `${dueCount} thẻ đến hạn`,
+                icon: Clock,
               },
               {
                 value: 'new_only',
-                title: 'Thẻ mới',
-                desc: initialCounts ? `${initialCounts.newCount} thẻ` : 'Học mới',
-              },
-              {
-                value: 'all',
-                title: 'Trộn tất cả',
-                desc: 'Tối đa thẻ',
+                title: 'Chỉ học thẻ mới',
+                desc: `${newCount} thẻ mới`,
+                icon: BookOpen,
               },
             ].map((m) => (
               <label
                 key={m.value}
-                className={`p-2.5 rounded-lg border cursor-pointer text-center space-y-0.5 transition-all ${
+                className={`p-2.5 rounded-lg border cursor-pointer text-center space-y-1 transition-all ${
                   mode === m.value
-                    ? 'border-primary bg-primary/5 font-semibold text-primary'
+                    ? 'border-primary bg-primary/5 font-semibold text-primary ring-1 ring-primary/30'
                     : 'hover:bg-muted/40 text-muted-foreground'
                 }`}
                 onClick={() => setMode(m.value as any)}
               >
-                <p className="text-xs font-bold">{m.title}</p>
+                <p className="text-xs font-bold leading-tight">{m.title}</p>
                 <p className="text-[10px] text-muted-foreground">{m.desc}</p>
               </label>
             ))}
           </div>
         </div>
 
-        {/* 5. Limit */}
-        <div className="flex items-center justify-between pt-2 border-t text-sm">
-          <span className="text-muted-foreground font-medium">Số thẻ phiên này:</span>
-          <div className="flex items-center gap-1.5">
-            {[10, 20, 30, 50].map((num) => (
+        {/* 5. New Cards Limit (when mode is 'all' or 'new_only') */}
+        {mode !== 'due_only' && (
+          <div className="space-y-2 p-3 rounded-lg bg-muted/25 border">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">Số lượng thẻ mới phiên này:</span>
+              <span className="text-muted-foreground">Còn {newCount} thẻ mới trong kho</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {[5, 10, 15, 20, 30, 50].map((num) => (
+                <Button
+                  key={num}
+                  type="button"
+                  variant={newLimit === num ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 px-2.5 text-xs font-medium"
+                  onClick={() => setNewLimit(num)}
+                >
+                  {num}
+                </Button>
+              ))}
               <Button
-                key={num}
                 type="button"
-                variant={limit === num ? 'secondary' : 'ghost'}
+                variant={newLimit === 'all' ? 'default' : 'outline'}
                 size="sm"
-                className="h-7 px-2 text-xs"
-                onClick={() => setLimit(num)}
+                className="h-7 px-3 text-xs font-medium"
+                onClick={() => setNewLimit('all')}
               >
-                {num}
+                Toàn bộ ({newCount})
               </Button>
-            ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* 6. Review Limit (when mode is 'all' or 'due_only') */}
+        {mode !== 'new_only' && (
+          <div className="space-y-2 p-3 rounded-lg bg-muted/25 border">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-foreground">Giới hạn thẻ ôn tập đến hạn:</span>
+              <span className="text-muted-foreground">Có {dueCount} thẻ đến hạn</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {[20, 50, 100].map((num) => (
+                <Button
+                  key={num}
+                  type="button"
+                  variant={reviewLimit === num ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-7 px-2.5 text-xs font-medium"
+                  onClick={() => setReviewLimit(num)}
+                >
+                  {num}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                variant={reviewLimit === 'all' ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 px-3 text-xs font-medium"
+                onClick={() => setReviewLimit('all')}
+              >
+                Tất cả ({dueCount})
+              </Button>
+            </div>
+          </div>
+        )}
 
         <Button size="lg" className="w-full text-base font-bold shadow-md" onClick={handleStart}>
           <Play className="w-5 h-5 mr-2" />
