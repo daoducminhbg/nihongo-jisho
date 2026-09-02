@@ -12,6 +12,7 @@ import { RotateCw, CheckCircle2, Clock, Zap, Sparkles } from 'lucide-react';
 import type { FlashcardItem, CardDirection, SessionStats } from '../_types/flashcard.types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { loadDeckOptions } from '../_lib/deck-options-storage';
 
 interface FlashcardViewerProps {
   cards: FlashcardItem[];
@@ -68,6 +69,8 @@ function getNextCardFromQueues(
 
 export function FlashcardViewer({ cards: initialCards, direction, onFinish }: FlashcardViewerProps) {
   const router = useRouter();
+  const deckOptions = useRef(loadDeckOptions()).current;
+  const [cardTimerSeconds, setCardTimerSeconds] = useState(0);
 
   // ── Initialize Anki Queues & First Card Synchronously ──
   const initialData = useRef(() => {
@@ -100,6 +103,19 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
 
   // Time ticker for countdown and checking due learning cards
   const [nowTime, setNowTime] = useState(() => Date.now());
+
+  // Card timer
+  useEffect(() => {
+    setCardTimerSeconds(0);
+  }, [activeCard?.srsCard.id]);
+
+  useEffect(() => {
+    if (!deckOptions.showTimer || !activeCard || (deckOptions.stopTimerOnAnswer && isFlipped)) return;
+    const t = setInterval(() => {
+      setCardTimerSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(t);
+  }, [deckOptions.showTimer, deckOptions.stopTimerOnAnswer, activeCard, isFlipped]);
 
   const [stats, setStats] = useState<SessionStats>({
     total: 0,
@@ -210,7 +226,7 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
 
   // ── Auto-speak on flip ──
   useEffect(() => {
-    if (isFlipped && activeCard) {
+    if (isFlipped && activeCard && !deckOptions.noAutoPlayAudio) {
       let textToSpeak: string | null = null;
 
       if (activeCard.itemType === 'vocab') {
@@ -421,10 +437,18 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
           </div>
         </div>
 
-        {/* Graduated Count */}
-        <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-          <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-          <span>Đã xong hôm nay: <strong className="text-foreground">{graduatedCount}</strong></span>
+        {/* Graduated Count & Optional Timer */}
+        <div className="flex items-center gap-3">
+          {deckOptions.showTimer && (
+            <div className="text-[11px] font-mono text-muted-foreground flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-amber-500" />
+              <span>{cardTimerSeconds}s</span>
+            </div>
+          )}
+          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+            <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+            <span>Đã xong: <strong className="text-foreground">{graduatedCount}</strong></span>
+          </div>
         </div>
       </div>
 

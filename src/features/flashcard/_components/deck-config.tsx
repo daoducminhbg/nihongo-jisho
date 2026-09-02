@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Layers, Play, ArrowLeftRight, Sparkles, Clock, BookOpen } from 'lucide-react';
+import Link from 'next/link';
+import { Layers, Play, ArrowLeftRight, Sparkles, Clock, BookOpen, Sliders } from 'lucide-react';
 import type { CardDirection } from '../_types/flashcard.types';
 import type { ItemType, JLPTLevel } from '@/lib/constants';
 
@@ -65,10 +66,18 @@ export function DeckConfigForm({ initialCounts }: DeckConfigFormProps) {
   return (
     <Card className="max-w-xl mx-auto shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Layers className="w-5 h-5 text-primary" />
-          Cấu hình phiên học Flashcard (Anki FSRS)
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary" />
+            Cấu hình phiên học Flashcard (Anki)
+          </CardTitle>
+          <Link href="/flashcard/deck-options">
+            <Button variant="ghost" size="sm" className="h-8 text-xs text-primary gap-1 px-2.5">
+              <Sliders className="w-3.5 h-3.5" />
+              Tùy chọn bộ thẻ
+            </Button>
+          </Link>
+        </div>
         <CardDescription>
           Hệ thống Spaced Repetition kiểu Anki: Hẹn giờ 1m - 10m trong ngày, ghi nhớ dài hạn sau khi tốt nghiệp
         </CardDescription>

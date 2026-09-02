@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Layers, RotateCcw } from 'lucide-react';
+import { Layers, RotateCcw, Sliders } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function FlashcardNavTabs() {
@@ -12,6 +12,7 @@ export function FlashcardNavTabs() {
   const tabs = [
     { href: '/flashcard', label: 'Bắt đầu học', icon: Layers, exact: true },
     { href: '/flashcard/review', label: 'Hàng đợi Ôn tập (Review)', icon: RotateCcw },
+    { href: '/flashcard/deck-options', label: 'Cài đặt bộ thẻ (Anki)', icon: Sliders },
   ];
 
   return (
