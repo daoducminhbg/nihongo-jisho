@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/shared/loading-spinner';
-import { Play, RotateCcw, AlertCircle } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 
 interface KanjiStrokeViewerProps {
   character: string;
@@ -11,71 +11,208 @@ interface KanjiStrokeViewerProps {
   size?: number;
 }
 
-export function KanjiStrokeViewer({ character, className = '', size = 200 }: KanjiStrokeViewerProps) {
+/** Duration per stroke scales with path length: min 0.5s, max 1.4s */
+const MIN_STROKE_DURATION = 0.5;
+const MAX_STROKE_DURATION = 1.4;
+/** Reference length to normalize stroke speed (~average KanjiVG path) */
+const REF_PATH_LENGTH = 200;
+/** Pause between strokes */
+const PAUSE_BETWEEN = 0.35;
+/** Smooth calligraphy-like easing */
+const EASE = 'cubic-bezier(0.25, 0.1, 0.25, 1.0)';
+
+export function KanjiStrokeViewer({
+  character,
+  className = '',
+  size = 200,
+}: KanjiStrokeViewerProps) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [animationKey, setAnimationKey] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  /** Monotonic counter – incrementing cancels any running sequence */
+  const seqRef = useRef(0);
+
+  // ── Fetch SVG from KanjiVG CDN ──
   useEffect(() => {
-    let isMounted = true;
-    const fetchSvg = async () => {
+    let alive = true;
+    (async () => {
       setIsLoading(true);
       setError(null);
-
       try {
-        const codePoint = character.codePointAt(0);
-        if (!codePoint) throw new Error('Ký tự không hợp lệ');
+        const cp = character.codePointAt(0);
+        if (!cp) throw new Error('Ký tự không hợp lệ');
 
-        // KanjiVG filenames are 5-digit lowercase hex, e.g. 098df
-        const hex = codePoint.toString(16).padStart(5, '0');
+        const hex = cp.toString(16).padStart(5, '0');
         const url = `https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg/kanji/${hex}.svg`;
 
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error('Không tìm thấy dữ liệu nét vẽ cho chữ này');
-        }
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Không tìm thấy dữ liệu nét vẽ cho chữ này');
 
-        const text = await response.text();
-        if (isMounted) {
-          // Process SVG: inject animation styles
-          const processedSvg = processKanjiSvg(text, size);
-          setSvgContent(processedSvg);
-        }
+        let svg = await res.text();
+        // Set target dimensions
+        svg = svg.replace(/width="[^"]*"/, `width="${size}"`);
+        svg = svg.replace(/height="[^"]*"/, `height="${size}"`);
+
+        if (alive) setSvgContent(svg);
       } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Lỗi tải nét vẽ');
-        }
+        if (alive) setError(err instanceof Error ? err.message : 'Lỗi tải nét vẽ');
       } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+        if (alive) setIsLoading(false);
       }
-    };
-
-    fetchSvg();
-    return () => {
-      isMounted = false;
-    };
+    })();
+    return () => { alive = false; };
   }, [character, size]);
 
+  // ── Core animation logic ──
+  const animateStrokes = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const svg = el.querySelector('svg');
+    if (!svg) return;
+
+    // KanjiVG stroke paths have ids like "kvg:XXXXX-s1", "kvg:XXXXX-s2" …
+    const paths = Array.from(
+      svg.querySelectorAll<SVGPathElement>('path[id]')
+    ).filter((p) => /-s\d+$/.test(p.id));
+
+    // KanjiVG stroke number labels
+    const texts = Array.from(svg.querySelectorAll<SVGTextElement>('text'));
+
+    if (paths.length === 0) return;
+
+    const seq = ++seqRef.current;
+    setIsPlaying(true);
+
+    // ── Reset every path to "hidden" (full dash offset) ──
+    paths.forEach((p) => {
+      const len = p.getTotalLength();
+      p.style.transition = 'none';
+      p.style.strokeDasharray = `${len}`;
+      p.style.strokeDashoffset = `${len}`;
+      p.style.stroke = 'var(--foreground, #1a1a1a)';
+      p.style.strokeWidth = '3.5';
+      p.style.strokeLinecap = 'round';
+      p.style.strokeLinejoin = 'round';
+      p.style.fill = 'none';
+      p.style.opacity = '1';
+    });
+
+    // ── Hide all stroke-number labels ──
+    texts.forEach((t) => {
+      t.style.transition = 'none';
+      t.style.opacity = '0';
+      t.style.fill = '#3b82f6';
+      t.style.fontSize = '8px';
+      t.style.fontFamily = 'system-ui, sans-serif';
+      t.style.fontWeight = '600';
+    });
+
+    // Force a reflow so the "reset" styles apply synchronously
+    // before we start transitioning.
+    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+    svg.getBoundingClientRect();
+
+    // ── Sequentially reveal strokes ──
+    let idx = 0;
+
+    const next = () => {
+      if (seq !== seqRef.current) return;       // cancelled
+      if (idx >= paths.length) {
+        setIsPlaying(false);
+        return;
+      }
+
+      const path = paths[idx];
+      const len = path.getTotalLength();
+
+      // Proportional duration: longer strokes take slightly longer
+      const ratio = Math.min(Math.max(len / REF_PATH_LENGTH, 0.4), 1.6);
+      const dur = MIN_STROKE_DURATION + (MAX_STROKE_DURATION - MIN_STROKE_DURATION) * ((ratio - 0.4) / 1.2);
+
+      // Transition the dashoffset → 0  (draws the stroke)
+      path.style.transition = `stroke-dashoffset ${dur.toFixed(2)}s ${EASE}`;
+      requestAnimationFrame(() => {
+        if (seq !== seqRef.current) return;
+        path.style.strokeDashoffset = '0';
+      });
+
+      // Fade in the stroke number AFTER the stroke finishes drawing
+      const label = texts[idx];
+      const afterDraw = dur * 1000;
+      const afterPause = (dur + PAUSE_BETWEEN) * 1000;
+
+      setTimeout(() => {
+        if (seq !== seqRef.current) return;
+        if (label) {
+          label.style.transition = 'opacity 0.25s ease';
+          label.style.opacity = '0.85';
+        }
+      }, afterDraw);
+
+      // Start the NEXT stroke after draw + pause
+      idx++;
+      setTimeout(() => {
+        if (seq !== seqRef.current) return;
+        next();
+      }, afterPause);
+    };
+
+    // Kick off with a tiny delay so the reset reflow is visible
+    requestAnimationFrame(next);
+  }, []);
+
+  // ── Auto-play when SVG first loads ──
+  useEffect(() => {
+    if (svgContent && !isLoading) {
+      const t = setTimeout(animateStrokes, 120);
+      return () => clearTimeout(t);
+    }
+  }, [svgContent, isLoading, animateStrokes]);
+
+  // ── Replay handler ──
   const handleReplay = () => {
-    setAnimationKey((prev) => prev + 1);
+    seqRef.current++;          // cancel running animation
+    animateStrokes();
   };
 
   return (
     <div className={`flex flex-col items-center space-y-3 ${className}`}>
+      {/* Canvas area */}
       <div
         className="relative border rounded-lg bg-card shadow-inner flex items-center justify-center overflow-hidden p-2"
         style={{ width: size + 16, height: size + 16 }}
       >
-        {/* Subtle grid lines for calligraphy practice */}
+        {/* Calligraphy guide cross-hair */}
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="w-full h-px bg-muted-foreground/15 border-dashed border-b" />
+          <div className="w-full h-px bg-muted-foreground/15" />
         </div>
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-          <div className="h-full w-px bg-muted-foreground/15 border-dashed border-r" />
+          <div className="h-full w-px bg-muted-foreground/15" />
         </div>
+        {/* Diagonal guides */}
+        <svg
+          className="absolute inset-0 w-full h-full pointer-events-none"
+          viewBox={`0 0 ${size + 16} ${size + 16}`}
+          preserveAspectRatio="none"
+        >
+          <line
+            x1="0" y1="0" x2={size + 16} y2={size + 16}
+            stroke="var(--muted-foreground)"
+            strokeWidth="0.5"
+            opacity="0.08"
+            strokeDasharray="4 6"
+          />
+          <line
+            x1={size + 16} y1="0" x2="0" y2={size + 16}
+            stroke="var(--muted-foreground)"
+            strokeWidth="0.5"
+            opacity="0.08"
+            strokeDasharray="4 6"
+          />
+        </svg>
 
         {isLoading && (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
@@ -87,79 +224,33 @@ export function KanjiStrokeViewer({ character, className = '', size = 200 }: Kan
         {error && !isLoading && (
           <div className="flex flex-col items-center text-center p-4 text-muted-foreground gap-2">
             <span className="text-4xl font-bold font-japanese">{character}</span>
-            <span className="text-xs text-muted-foreground">{error}</span>
+            <span className="text-xs">{error}</span>
           </div>
         )}
 
         {svgContent && !isLoading && (
           <div
-            key={animationKey}
+            ref={containerRef}
             className="kanji-stroke-container z-10"
             dangerouslySetInnerHTML={{ __html: svgContent }}
           />
         )}
       </div>
 
+      {/* Replay button */}
       {svgContent && !isLoading && (
-        <Button variant="outline" size="sm" onClick={handleReplay} className="gap-1.5 text-xs">
-          <RotateCcw className="w-3.5 h-3.5" />
-          Phát lại nét vẽ
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleReplay}
+          disabled={isPlaying}
+          className="gap-1.5 text-xs"
+          aria-label="Phát lại nét vẽ"
+        >
+          <RotateCcw className={`w-3.5 h-3.5 ${isPlaying ? 'animate-spin' : ''}`} />
+          {isPlaying ? 'Đang vẽ...' : 'Phát lại nét vẽ'}
         </Button>
       )}
     </div>
   );
-}
-
-/**
- * Parses KanjiVG SVG to add stroke order animations and styling
- */
-function processKanjiSvg(rawSvg: string, targetSize: number): string {
-  // Add styling to animate each path sequentially
-  const styleInjection = `
-    <style>
-      path {
-        stroke: var(--foreground, #111) !important;
-        stroke-width: 3.5 !important;
-        stroke-linecap: round !important;
-        stroke-linejoin: round !important;
-        animation: kanjiStroke 0.6s ease-in-out forwards;
-        stroke-dasharray: 500;
-        stroke-dashoffset: 500;
-      }
-      text {
-        font-size: 8px !important;
-        fill: #3b82f6 !important;
-        font-family: sans-serif !important;
-        font-weight: 600 !important;
-        opacity: 0.8 !important;
-      }
-      @keyframes kanjiStroke {
-        to {
-          stroke-dashoffset: 0;
-        }
-      }
-  `;
-
-  // Inject delays per stroke path
-  let strokeIndex = 0;
-  const withDelays = rawSvg.replace(/<path[^>]+id="[^"]*-s(\d+)"[^>]*>/g, (match, p1) => {
-    const strokeNum = parseInt(p1, 10);
-    const delay = (strokeNum - 1) * 0.4;
-    return match.replace(
-      '<path',
-      `<path style="animation-delay: ${delay}s; animation-fill-mode: forwards;"`
-    );
-  });
-
-  // Inject style block inside <svg>
-  let finalSvg = withDelays.replace(
-    /<svg[^>]*>/,
-    `$&${styleInjection}</style>`
-  );
-
-  // Set width & height
-  finalSvg = finalSvg.replace(/width="[^"]*"/, `width="${targetSize}"`);
-  finalSvg = finalSvg.replace(/height="[^"]*"/, `height="${targetSize}"`);
-
-  return finalSvg;
 }
