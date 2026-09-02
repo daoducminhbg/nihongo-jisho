@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CardFront } from './card-front';
 import { CardBack } from './card-back';
@@ -8,7 +8,7 @@ import { RatingButtons } from './rating-buttons';
 import { Button } from '@/components/ui/button';
 import { submitCardReview } from '../_actions/update-card-review';
 import { isGraduatedForToday } from '../_lib/fsrs-engine';
-import { RotateCw, CheckCircle2, ArrowRight, ArrowLeft, Clock, Zap, Sparkles } from 'lucide-react';
+import { RotateCw, CheckCircle2, Clock, Zap, Sparkles } from 'lucide-react';
 import type { FlashcardItem, CardDirection, SessionStats } from '../_types/flashcard.types';
 import Link from 'next/link';
 
@@ -23,24 +23,74 @@ interface LearningQueueItem {
   dueTime: number; // timestamp in ms
 }
 
+/**
+ * Pure queue picker matching Anki priority:
+ * 1. Due Learning cards (dueTime <= now)
+ * 2. Due Review cards
+ * 3. New cards
+ * 4. Waiting on future learning cards (10m delay)
+ */
+function getNextCardFromQueues(
+  newQ: FlashcardItem[],
+  revQ: FlashcardItem[],
+  learnQ: LearningQueueItem[],
+  now: number
+): {
+  card: FlashcardItem | null;
+  newQ: FlashcardItem[];
+  revQ: FlashcardItem[];
+  learnQ: LearningQueueItem[];
+} {
+  // 1. Ready learning card (dueTime <= now)
+  const readyIdx = learnQ.findIndex((l) => l.dueTime <= now);
+  if (readyIdx !== -1) {
+    const card = learnQ[readyIdx].item;
+    const nextLearnQ = learnQ.filter((_, idx) => idx !== readyIdx);
+    return { card, newQ, revQ, learnQ: nextLearnQ };
+  }
+
+  // 2. Review card
+  if (revQ.length > 0) {
+    const [card, ...nextRevQ] = revQ;
+    return { card, newQ, revQ: nextRevQ, learnQ };
+  }
+
+  // 3. New card
+  if (newQ.length > 0) {
+    const [card, ...nextNewQ] = newQ;
+    return { card, newQ: nextNewQ, revQ, learnQ };
+  }
+
+  // 4. None ready
+  return { card: null, newQ, revQ, learnQ };
+}
+
 export function FlashcardViewer({ cards: initialCards, direction, onFinish }: FlashcardViewerProps) {
-  // ── Anki 3-Queue State ──
-  const [newQueue, setNewQueue] = useState<FlashcardItem[]>(() =>
-    initialCards.filter((c) => c.srsCard.state === 'new')
-  );
-  const [reviewQueue, setReviewQueue] = useState<FlashcardItem[]>(() =>
-    initialCards.filter((c) => c.srsCard.state === 'review')
-  );
-  const [learningQueue, setLearningQueue] = useState<LearningQueueItem[]>(() =>
-    initialCards
+  // ── Initialize Anki Queues & First Card Synchronously ──
+  const initialData = useRef(() => {
+    const newQ = initialCards.filter((c) => c.srsCard.state === 'new');
+    const revQ = initialCards.filter((c) => c.srsCard.state === 'review');
+    const learnQ: LearningQueueItem[] = initialCards
       .filter((c) => c.srsCard.state === 'learning' || c.srsCard.state === 'relearning')
       .map((c) => ({
         item: c,
         dueTime: new Date(c.srsCard.due).getTime(),
-      }))
-  );
+      }));
 
-  const [activeCard, setActiveCard] = useState<FlashcardItem | null>(null);
+    const first = getNextCardFromQueues(newQ, revQ, learnQ, Date.now());
+    return {
+      card: first.card,
+      newQ: first.newQ,
+      revQ: first.revQ,
+      learnQ: first.learnQ,
+    };
+  }).current;
+
+  const [activeCard, setActiveCard] = useState<FlashcardItem | null>(() => initialData().card);
+  const [newQueue, setNewQueue] = useState<FlashcardItem[]>(() => initialData().newQ);
+  const [reviewQueue, setReviewQueue] = useState<FlashcardItem[]>(() => initialData().revQ);
+  const [learningQueue, setLearningQueue] = useState<LearningQueueItem[]>(() => initialData().learnQ);
+
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [graduatedCount, setGraduatedCount] = useState(0);
@@ -64,78 +114,23 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
     return () => clearInterval(timer);
   }, []);
 
-  // ── Card Picker: Anki-style Interleaved Queue Priority ──
-  // 1. Ready learning cards (dueTime <= now) take HIGHEST priority
-  // 2. Review cards (due from previous days)
-  // 3. New cards
-  // 4. Waiting on future learning cards (10m pause)
-  // 5. Complete!
-  const pickNextCard = useCallback(() => {
-    const now = Date.now();
-
-    // 1. Check if any card in learningQueue is due right now
-    const readyLearningIdx = learningQueue.findIndex((l) => l.dueTime <= now);
-    if (readyLearningIdx !== -1) {
-      const readyItem = learningQueue[readyLearningIdx].item;
-      setLearningQueue((prev) => prev.filter((_, idx) => idx !== readyLearningIdx));
-      setActiveCard(readyItem);
-      setIsFlipped(false);
-      return;
-    }
-
-    // 2. Next review card
-    if (reviewQueue.length > 0) {
-      const [nextReview, ...restReviews] = reviewQueue;
-      setReviewQueue(restReviews);
-      setActiveCard(nextReview);
-      setIsFlipped(false);
-      return;
-    }
-
-    // 3. Next new card
-    if (newQueue.length > 0) {
-      const [nextNew, ...restNew] = newQueue;
-      setNewQueue(restNew);
-      setActiveCard(nextNew);
-      setIsFlipped(false);
-      return;
-    }
-
-    // 4. If all new and reviews are empty, but cards are still waiting in learningQueue
-    if (learningQueue.length > 0) {
-      setActiveCard(null); // Triggers the Waiting / Learn Ahead screen
-      setIsFlipped(false);
-      return;
-    }
-
-    // 5. All done!
-    setActiveCard(null);
-    if (onFinish) onFinish();
-  }, [learningQueue, reviewQueue, newQueue, onFinish]);
-
-  // Initial card pick on mount
-  const hasInitialized = useRef(false);
-  useEffect(() => {
-    if (!hasInitialized.current && initialCards.length > 0) {
-      hasInitialized.current = true;
-      pickNextCard();
-    }
-  }, [initialCards, pickNextCard]);
-
   // If activeCard is null and a learning card becomes ready as time ticks
   useEffect(() => {
     if (!activeCard && learningQueue.length > 0) {
-      const hasReady = learningQueue.some((l) => l.dueTime <= nowTime);
-      if (hasReady) {
-        pickNextCard();
+      const now = Date.now();
+      const readyIdx = learningQueue.findIndex((l) => l.dueTime <= now);
+      if (readyIdx !== -1) {
+        const item = learningQueue[readyIdx].item;
+        setLearningQueue((prev) => prev.filter((_, idx) => idx !== readyIdx));
+        setActiveCard(item);
+        setIsFlipped(false);
       }
     }
-  }, [activeCard, learningQueue, nowTime, pickNextCard]);
+  }, [activeCard, learningQueue, nowTime]);
 
   // ── Action: Learn Ahead (học trước không cần đợi 10 phút) ──
   const handleLearnAhead = useCallback(() => {
     if (learningQueue.length === 0) return;
-    // Sort by dueTime ascending to take the earliest due item
     const sorted = [...learningQueue].sort((a, b) => a.dueTime - b.dueTime);
     const earliestItem = sorted[0].item;
     setLearningQueue((prev) => prev.filter((l) => l.item.srsCard.id !== earliestItem.srsCard.id));
@@ -149,7 +144,7 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
     }
   }, [activeCard, isSubmitting]);
 
-  // ── Action: Rate Card ──
+  // ── Action: Rate Card (Anki SM-2 Progression) ──
   const handleRate = useCallback(
     async (rating: 1 | 2 | 3 | 4) => {
       if (!activeCard || isSubmitting) return;
@@ -158,6 +153,9 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
 
       try {
         const res = await submitCardReview(activeCard.srsCard.id, rating);
+        const updatedCard = res.card || activeCard.srsCard;
+        const nextDueDate = new Date(updatedCard.due);
+        const graduated = isGraduatedForToday(nextDueDate);
 
         // Update session stats
         setStats((prev) => ({
@@ -169,43 +167,42 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
           easy: rating === 4 ? prev.easy + 1 : prev.easy,
         }));
 
-        const updatedCard = res.card || activeCard.srsCard;
-        const nextDueDate = new Date(updatedCard.due);
-        const graduated = isGraduatedForToday(nextDueDate);
+        let updatedLearningQ = [...learningQueue];
 
         if (graduated) {
-          // Card graduated past today! Does not reappear today.
+          // Card graduated past today! Does NOT reappear in session today.
           setGraduatedCount((prev) => prev + 1);
         } else {
-          // Still in learning phase for today (< 1m or 10m). Put back into learningQueue!
+          // Still in learning phase for today (< 1m, 6m, 10m). Put into learningQueue with timestamp
           const updatedItem: FlashcardItem = {
             ...activeCard,
             srsCard: updatedCard,
           };
-          setLearningQueue((prev) => [
-            ...prev,
-            {
-              item: updatedItem,
-              dueTime: nextDueDate.getTime(),
-            },
-          ]);
+          updatedLearningQ.push({
+            item: updatedItem,
+            dueTime: nextDueDate.getTime(),
+          });
         }
 
-        // Unflip and pick next card
-        setIsFlipped(false);
-        setActiveCard(null);
+        // Pick next card synchronously from updated queues
+        const next = getNextCardFromQueues(newQueue, reviewQueue, updatedLearningQ, Date.now());
 
-        // Advance to next card on next tick
-        setTimeout(() => {
-          pickNextCard();
-        }, 50);
+        setActiveCard(next.card);
+        setNewQueue(next.newQ);
+        setReviewQueue(next.revQ);
+        setLearningQueue(next.learnQ);
+        setIsFlipped(false);
+
+        if (!next.card && next.learnQ.length === 0 && onFinish) {
+          onFinish();
+        }
       } catch (err) {
         console.error('Error submitting review:', err);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [activeCard, isSubmitting, pickNextCard]
+    [activeCard, isSubmitting, learningQueue, newQueue, reviewQueue, onFinish]
   );
 
   // ── Auto-speak on flip ──
@@ -285,7 +282,7 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
         <div className="space-y-2">
           <h2 className="text-2xl font-bold">Hoàn thành phiên học hôm nay!</h2>
           <p className="text-muted-foreground text-sm">
-            Tất cả thẻ đã tốt nghiệp và được hẹn sang các ngày tiếp theo theo thuật toán Anki FSRS.
+            Tất cả thẻ đã tốt nghiệp và được hẹn sang các ngày tiếp theo theo thuật toán Anki SM-2.
           </p>
         </div>
 

@@ -1,14 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import {
-  toFSRSCard,
-  fromFSRSState,
-  calculateNextSchedule,
-  formatInterval,
-  Rating,
-  type Grade,
-} from '../_lib/fsrs-engine';
+import { calculateAnkiSchedule, formatInterval } from '../_lib/fsrs-engine';
 import type { SRSCard } from '@/types/database.types';
 
 export async function submitCardReview(
@@ -43,60 +36,50 @@ export async function submitCardReview(
       return { success: false, error: 'Không tìm thấy thẻ học' };
     }
 
-    const fsrsCard = toFSRSCard(dbCard as SRSCard);
     const now = new Date();
-    const scheduling = calculateNextSchedule(fsrsCard, now);
+    // Calculate new schedule using Anki SM-2 Github formula
+    const updated = calculateAnkiSchedule(dbCard as SRSCard, rating, now);
 
-    // Map rating number (1-4) to Grade
-    const gradeMap: Record<number, Grade> = {
-      1: Rating.Again as Grade,
-      2: Rating.Hard as Grade,
-      3: Rating.Good as Grade,
-      4: Rating.Easy as Grade,
-    };
-
-    const nextSchedule = scheduling[gradeMap[rating]];
-    const updatedCard = nextSchedule.card;
-
-    // Persist updated FSRS card to database
+    // Persist updated Anki card to database (only existing columns)
     const { error: updateError } = await supabase
       .from('srs_cards')
       .update({
-        due: updatedCard.due.toISOString(),
-        stability: updatedCard.stability,
-        difficulty: updatedCard.difficulty,
-        elapsed_days: updatedCard.elapsed_days,
-        scheduled_days: updatedCard.scheduled_days,
-        reps: updatedCard.reps,
-        lapses: updatedCard.lapses,
-        learning_steps: updatedCard.learning_steps,
-        state: fromFSRSState(updatedCard.state),
+        due: updated.due,
+        stability: updated.stability,
+        difficulty: updated.difficulty,
+        elapsed_days: updated.elapsed_days,
+        scheduled_days: updated.scheduled_days,
+        reps: updated.reps,
+        lapses: updated.lapses,
+        state: updated.state,
         last_review: now.toISOString(),
       })
       .eq('id', cardId)
       .eq('user_id', user.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Error updating srs_cards row:', updateError);
+      throw updateError;
+    }
 
     const updatedDbCard: SRSCard = {
       ...(dbCard as SRSCard),
-      due: updatedCard.due.toISOString(),
-      stability: updatedCard.stability,
-      difficulty: updatedCard.difficulty,
-      elapsed_days: updatedCard.elapsed_days,
-      scheduled_days: updatedCard.scheduled_days,
-      reps: updatedCard.reps,
-      lapses: updatedCard.lapses,
-      learning_steps: updatedCard.learning_steps,
-      state: fromFSRSState(updatedCard.state),
+      due: updated.due,
+      stability: updated.stability,
+      difficulty: updated.difficulty,
+      elapsed_days: updated.elapsed_days,
+      scheduled_days: updated.scheduled_days,
+      reps: updated.reps,
+      lapses: updated.lapses,
+      state: updated.state,
       last_review: now.toISOString(),
     };
 
     return {
       success: true,
       card: updatedDbCard,
-      nextDue: updatedCard.due.toISOString(),
-      nextInterval: formatInterval(updatedCard.due, now),
+      nextDue: updated.due,
+      nextInterval: formatInterval(updated.due, now),
     };
   } catch (error) {
     console.error('Error submitting card review:', error);

@@ -2,13 +2,7 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import {
-  toFSRSCard,
-  calculateNextSchedule,
-  formatInterval,
-  Rating,
-  type Grade,
-} from '../_lib/fsrs-engine';
+import { calculateNextSchedule, formatInterval } from '../_lib/fsrs-engine';
 import type { SRSCard } from '@/types/database.types';
 
 interface RatingButtonsProps {
@@ -18,25 +12,24 @@ interface RatingButtonsProps {
 }
 
 export function RatingButtons({ srsCard, onRate, disabled }: RatingButtonsProps) {
-  // Pre-calculate intervals for all 4 options
+  // Pre-calculate intervals for all 4 Anki options
   const intervals = useMemo(() => {
     try {
-      const fsrsCard = toFSRSCard(srsCard);
       const now = new Date();
-      const scheduling = calculateNextSchedule(fsrsCard, now);
+      const scheduling = calculateNextSchedule(srsCard, now);
 
       return {
-        again: formatInterval(scheduling[Rating.Again as Grade].card.due, now),
-        hard: formatInterval(scheduling[Rating.Hard as Grade].card.due, now),
-        good: formatInterval(scheduling[Rating.Good as Grade].card.due, now),
-        easy: formatInterval(scheduling[Rating.Easy as Grade].card.due, now),
+        again: formatInterval(scheduling[1].due, now),
+        hard: formatInterval(scheduling[2].due, now),
+        good: formatInterval(scheduling[3].due, now),
+        easy: formatInterval(scheduling[4].due, now),
       };
     } catch {
       return {
-        again: '< 1m',
-        hard: '1d',
-        good: '3d',
-        easy: '7d',
+        again: '< 1 phút',
+        hard: '6 phút',
+        good: '10 phút',
+        easy: '4 ngày',
       };
     }
   }, [srsCard]);
