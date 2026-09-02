@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Sparkles, BookOpen, Layers, Clock, Award } from 'lucide-react';
+import { RotateCcw, Sparkles, BookOpen, Layers, Clock, Award, Zap, CheckCircle2 } from 'lucide-react';
 import type { QueueSummary } from '../_types/flashcard.types';
 
 interface ReviewDashboardProps {
@@ -23,27 +23,47 @@ export function ReviewDashboard({ stats }: ReviewDashboardProps) {
             </div>
             <h2 className="text-2xl md:text-3xl font-bold">
               {stats.dueCount > 0
-                ? `Bạn có ${stats.dueCount} thẻ cần ôn hôm nay!`
-                : 'Tuyệt vời! Bạn đã hoàn thành hết thẻ ôn tập hôm nay.'}
+                ? `Bạn có ${stats.dueCount} thẻ đến hạn ôn hôm nay!`
+                : stats.learningCount > 0
+                ? `Bạn có ${stats.learningCount} thẻ đang học cần hoàn thành hôm nay!`
+                : stats.newCount > 0
+                ? `Bạn có ${stats.newCount} thẻ mới sẵn sàng để học!`
+                : 'Tuyệt vời! Bạn đã hoàn thành hết toàn bộ thẻ hôm nay.'}
             </h2>
             <p className="text-sm text-muted-foreground max-w-lg">
-              Ôn tập đều đặn đúng thời điểm giúp củng cố độ bền trí nhớ (Memory Stability) và tối ưu hóa thời gian học từ N5 lên N3.
+              {stats.learningCount > 0
+                ? 'Các thẻ đang ở bước học ngắn (1m - 10m). Bấm "Học tiếp" để ôn ngay (Learn Ahead) và giúp thẻ tốt nghiệp sang ngày mai.'
+                : 'Ôn tập đều đặn đúng thời điểm giúp củng cố độ bền trí nhớ (Memory Stability) và tối ưu hóa thời gian học từ N5 lên N3.'}
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 shrink-0">
             {stats.dueCount > 0 ? (
-              <Link href="/flashcard/study?mode=due_only">
+              <Link href="/flashcard/study?mode=all">
                 <Button size="lg" className="font-bold shadow-md gap-2">
                   <RotateCcw className="w-5 h-5" />
                   Ôn tập ngay ({stats.dueCount})
                 </Button>
               </Link>
-            ) : (
+            ) : stats.learningCount > 0 ? (
+              <Link href="/flashcard/study?mode=all">
+                <Button size="lg" className="font-bold shadow-md gap-2 bg-orange-600 hover:bg-orange-700 text-white">
+                  <Zap className="w-5 h-5 text-amber-300" />
+                  Học tiếp ({stats.learningCount} thẻ đang học)
+                </Button>
+              </Link>
+            ) : stats.newCount > 0 ? (
               <Link href="/flashcard/study?mode=new_only">
                 <Button size="lg" className="font-bold shadow-md gap-2">
                   <BookOpen className="w-5 h-5" />
                   Học thẻ mới ({stats.newCount})
+                </Button>
+              </Link>
+            ) : (
+              <Link href="/flashcard">
+                <Button size="lg" variant="outline" className="font-bold gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  Hôm nay đã xong!
                 </Button>
               </Link>
             )}
