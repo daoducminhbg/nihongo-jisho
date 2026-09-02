@@ -12,6 +12,7 @@ export async function getQueueStats(): Promise<{
     dueCount: 0,
     newCount: 0,
     learningCount: 0,
+    graduatedCount: 0,
     totalCards: 0,
   };
 
@@ -27,7 +28,7 @@ export async function getQueueStats(): Promise<{
 
     const now = new Date().toISOString();
 
-    const [dueResult, newResult, learningResult, totalResult] = await Promise.all([
+    const [dueResult, newResult, learningResult, graduatedResult, totalResult] = await Promise.all([
       // 1. Thẻ ôn tập định kỳ đã tốt nghiệp và đến hạn hôm nay
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
@@ -37,12 +38,16 @@ export async function getQueueStats(): Promise<{
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
         .eq('state', 'new'),
-      // 3. Thẻ đang học đến hạn (chu kỳ ngắn trong ngày)
+      // 3. Thẻ đang học (chu kỳ ngắn 1m - 10m trong ngày)
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id)
-        .in('state', ['learning', 'relearning'])
-        .lte('due', now),
-      // 4. Tổng số thẻ trong kho
+        .in('state', ['learning', 'relearning']),
+      // 4. Thẻ đã tốt nghiệp (đang ghi nhớ dài hạn, hẹn ngày mai hoặc xa hơn)
+      supabase.from('srs_cards').select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('state', 'review')
+        .gt('due', now),
+      // 5. Tổng số thẻ trong kho
       supabase.from('srs_cards').select('*', { count: 'exact', head: true })
         .eq('user_id', user.id),
     ]);
@@ -53,6 +58,7 @@ export async function getQueueStats(): Promise<{
         dueCount: dueResult.count || 0,
         newCount: newResult.count || 0,
         learningCount: learningResult.count || 0,
+        graduatedCount: graduatedResult.count || 0,
         totalCards: totalResult.count || 0,
       },
     };

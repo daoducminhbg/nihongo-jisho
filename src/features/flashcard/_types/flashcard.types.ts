@@ -25,6 +25,7 @@ export interface QueueSummary {
   dueCount: number;
   newCount: number;
   learningCount: number;
+  graduatedCount: number;
   totalCards: number;
 }
 

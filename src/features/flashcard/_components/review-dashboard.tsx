@@ -56,54 +56,67 @@ export function ReviewDashboard({ stats }: ReviewDashboardProps) {
         </div>
       </Card>
 
-      {/* 4 Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 5 Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="border-amber-500/20 bg-amber-500/5">
-          <CardContent className="p-4 space-y-1">
+          <CardContent className="p-3.5 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Đến hạn hôm nay</span>
               <Clock className="w-4 h-4 text-amber-500" />
             </div>
-            <p className="text-3xl font-extrabold text-amber-600 dark:text-amber-400">
+            <p className="text-2xl sm:text-3xl font-extrabold text-amber-600 dark:text-amber-400">
               {stats.dueCount}
             </p>
-            <p className="text-[11px] text-muted-foreground">Cần review ngay</p>
+            <p className="text-[11px] text-muted-foreground">Cần ôn tập ngay</p>
           </CardContent>
         </Card>
 
         <Card className="border-blue-500/20 bg-blue-500/5">
-          <CardContent className="p-4 space-y-1">
+          <CardContent className="p-3.5 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Thẻ mới</span>
               <BookOpen className="w-4 h-4 text-blue-500" />
             </div>
-            <p className="text-3xl font-extrabold text-blue-600 dark:text-blue-400">
+            <p className="text-2xl sm:text-3xl font-extrabold text-blue-600 dark:text-blue-400">
               {stats.newCount}
             </p>
             <p className="text-[11px] text-muted-foreground">Chưa từng học</p>
           </CardContent>
         </Card>
 
-        <Card className="border-green-500/20 bg-green-500/5">
-          <CardContent className="p-4 space-y-1">
+        <Card className="border-orange-500/20 bg-orange-500/5">
+          <CardContent className="p-3.5 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
-              <span className="text-xs font-medium">Đang ghi nhớ</span>
-              <Award className="w-4 h-4 text-green-500" />
+              <span className="text-xs font-medium">Đang học hôm nay</span>
+              <RotateCcw className="w-4 h-4 text-orange-500" />
             </div>
-            <p className="text-3xl font-extrabold text-green-600 dark:text-green-400">
+            <p className="text-2xl sm:text-3xl font-extrabold text-orange-600 dark:text-orange-400">
               {stats.learningCount}
             </p>
-            <p className="text-[11px] text-muted-foreground">Đang trong chu kỳ FSRS</p>
+            <p className="text-[11px] text-muted-foreground">Bước học 1m - 10m</p>
           </CardContent>
         </Card>
 
-        <Card className="border-muted bg-card">
-          <CardContent className="p-4 space-y-1">
+        <Card className="border-green-500/20 bg-green-500/5">
+          <CardContent className="p-3.5 space-y-1">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="text-xs font-medium">Đã tốt nghiệp</span>
+              <Award className="w-4 h-4 text-green-500" />
+            </div>
+            <p className="text-2xl sm:text-3xl font-extrabold text-green-600 dark:text-green-400">
+              {stats.graduatedCount}
+            </p>
+            <p className="text-[11px] text-muted-foreground">Lên lịch ngày mai+</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-muted bg-card col-span-2 md:col-span-1">
+          <CardContent className="p-3.5 space-y-1">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="text-xs font-medium">Tổng số thẻ</span>
               <Layers className="w-4 h-4 text-primary" />
             </div>
-            <p className="text-3xl font-extrabold text-foreground">
+            <p className="text-2xl sm:text-3xl font-extrabold text-foreground">
               {stats.totalCards}
             </p>
             <p className="text-[11px] text-muted-foreground">Từ vựng, Kanji, Ngữ pháp</p>
