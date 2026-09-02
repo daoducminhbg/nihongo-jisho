@@ -7,9 +7,10 @@ import { CardBack } from './card-back';
 import { RatingButtons } from './rating-buttons';
 import { Button } from '@/components/ui/button';
 import { submitCardReview } from '../_actions/update-card-review';
-import { isGraduatedForToday } from '../_lib/fsrs-engine';
+import { isGraduatedForToday, calculateAnkiSchedule } from '../_lib/fsrs-engine';
 import { RotateCw, CheckCircle2, Clock, Zap, Sparkles } from 'lucide-react';
 import type { FlashcardItem, CardDirection, SessionStats } from '../_types/flashcard.types';
+import type { SRSCard } from '@/types/database.types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { loadDeckOptions } from '../_lib/deck-options-storage';
@@ -163,65 +164,78 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
     }
   }, [activeCard, isSubmitting]);
 
-  // ── Action: Rate Card (Anki SM-2 Progression) ──
+  // ── Action: Rate Card (Optimistic 0ms Instant Progression) ──
   const handleRate = useCallback(
-    async (rating: 1 | 2 | 3 | 4) => {
-      if (!activeCard || isSubmitting) return;
+    (rating: 1 | 2 | 3 | 4) => {
+      if (!activeCard) return;
 
-      setIsSubmitting(true);
+      const currentCard = activeCard;
+      const now = new Date();
 
-      try {
-        const res = await submitCardReview(activeCard.srsCard.id, rating);
-        const updatedCard = res.card || activeCard.srsCard;
-        const nextDueDate = new Date(updatedCard.due);
-        const graduated = isGraduatedForToday(nextDueDate);
+      // 1. Calculate schedule immediately on client (0ms lag)
+      const scheduled = calculateAnkiSchedule(currentCard.srsCard, rating, now);
+      const updatedCard: SRSCard = {
+        ...currentCard.srsCard,
+        due: scheduled.due,
+        stability: scheduled.stability,
+        difficulty: scheduled.difficulty,
+        elapsed_days: scheduled.elapsed_days,
+        scheduled_days: scheduled.scheduled_days,
+        reps: scheduled.reps,
+        lapses: scheduled.lapses,
+        state: scheduled.state,
+        last_review: now.toISOString(),
+      };
 
-        // Update session stats
-        setStats((prev) => ({
-          ...prev,
-          total: prev.total + 1,
-          again: rating === 1 ? prev.again + 1 : prev.again,
-          hard: rating === 2 ? prev.hard + 1 : prev.hard,
-          good: rating === 3 ? prev.good + 1 : prev.good,
-          easy: rating === 4 ? prev.easy + 1 : prev.easy,
-        }));
+      const nextDueDate = new Date(updatedCard.due);
+      const graduated = isGraduatedForToday(nextDueDate);
 
-        let updatedLearningQ = [...learningQueue];
+      // 2. Update session stats immediately
+      setStats((prev) => ({
+        ...prev,
+        total: prev.total + 1,
+        again: rating === 1 ? prev.again + 1 : prev.again,
+        hard: rating === 2 ? prev.hard + 1 : prev.hard,
+        good: rating === 3 ? prev.good + 1 : prev.good,
+        easy: rating === 4 ? prev.easy + 1 : prev.easy,
+      }));
 
-        if (graduated) {
-          // Card graduated past today! Does NOT reappear in session today.
-          setGraduatedCount((prev) => prev + 1);
-        } else {
-          // Still in learning phase for today (< 1m, 6m, 10m). Put into learningQueue with timestamp
-          const updatedItem: FlashcardItem = {
-            ...activeCard,
-            srsCard: updatedCard,
-          };
-          updatedLearningQ.push({
-            item: updatedItem,
-            dueTime: nextDueDate.getTime(),
-          });
-        }
+      let updatedLearningQ = [...learningQueue];
 
-        // Pick next card synchronously from updated queues
-        const next = getNextCardFromQueues(newQueue, reviewQueue, updatedLearningQ, Date.now());
-
-        setActiveCard(next.card);
-        setNewQueue(next.newQ);
-        setReviewQueue(next.revQ);
-        setLearningQueue(next.learnQ);
-        setIsFlipped(false);
-
-        if (!next.card && next.learnQ.length === 0 && onFinish) {
-          onFinish();
-        }
-      } catch (err) {
-        console.error('Error submitting review:', err);
-      } finally {
-        setIsSubmitting(false);
+      if (graduated) {
+        // Card graduated past today! Does NOT reappear in session today.
+        setGraduatedCount((prev) => prev + 1);
+      } else {
+        // Still in learning phase for today (< 1m, 6m, 10m). Put into learningQueue with timestamp
+        const updatedItem: FlashcardItem = {
+          ...currentCard,
+          srsCard: updatedCard,
+        };
+        updatedLearningQ.push({
+          item: updatedItem,
+          dueTime: nextDueDate.getTime(),
+        });
       }
+
+      // 3. Pick next card INSTANTLY
+      const next = getNextCardFromQueues(newQueue, reviewQueue, updatedLearningQ, Date.now());
+
+      setActiveCard(next.card);
+      setNewQueue(next.newQ);
+      setReviewQueue(next.revQ);
+      setLearningQueue(next.learnQ);
+      setIsFlipped(false);
+
+      if (!next.card && next.learnQ.length === 0 && onFinish) {
+        onFinish();
+      }
+
+      // 4. Save to database in background (Non-blocking!)
+      submitCardReview(currentCard.srsCard.id, rating).catch((err) => {
+        console.error('Background review save error:', err);
+      });
     },
-    [activeCard, isSubmitting, learningQueue, newQueue, reviewQueue, onFinish]
+    [activeCard, learningQueue, newQueue, reviewQueue, onFinish]
   );
 
   // ── Auto-speak on flip ──
@@ -459,20 +473,20 @@ export function FlashcardViewer({ cards: initialCards, direction, onFinish }: Fl
             {!isFlipped ? (
               <motion.div
                 key={activeCard.srsCard.id + '-front'}
-                initial={{ opacity: 0, rotateY: -90 }}
-                animate={{ opacity: 1, rotateY: 0 }}
-                exit={{ opacity: 0, rotateY: 90 }}
-                transition={{ duration: 0.22 }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.12, ease: 'easeOut' }}
               >
                 <CardFront item={activeCard} direction={direction} />
               </motion.div>
             ) : (
               <motion.div
                 key={activeCard.srsCard.id + '-back'}
-                initial={{ opacity: 0, rotateY: 90 }}
-                animate={{ opacity: 1, rotateY: 0 }}
-                exit={{ opacity: 0, rotateY: -90 }}
-                transition={{ duration: 0.22 }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.12, ease: 'easeOut' }}
               >
                 <CardBack item={activeCard} direction={direction} />
               </motion.div>
