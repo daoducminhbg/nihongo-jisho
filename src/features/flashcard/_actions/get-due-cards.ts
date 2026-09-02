@@ -19,7 +19,15 @@ export async function getStudyCards(config: DeckConfig): Promise<{
       return { success: false, cards: [], error: 'Chưa đăng nhập' };
     }
 
-    const now = new Date().toISOString();
+    const now = new Date();
+    const nowStr = now.toISOString();
+
+    // In Anki, cards in the intraday learning queue for today (1m - 10m steps)
+    // belong to today's study session until next morning.
+    const endOfToday = new Date(now);
+    endOfToday.setHours(23, 59, 59, 999);
+    const endOfTodayStr = endOfToday.toISOString();
+
     let cards: SRSCard[] = [];
 
     const baseQuery = () =>
@@ -30,18 +38,26 @@ export async function getStudyCards(config: DeckConfig): Promise<{
         .in('item_type', config.itemTypes);
 
     if (config.mode === 'all') {
-      // Anki mode: Fetch Due reviews + New cards
+      // Anki mode: Fetch Due reviews + Intraday learning cards + New cards
       const newCardLimit =
         config.newLimit === 'all' ? 300 : (typeof config.newLimit === 'number' ? config.newLimit : (config.limit || 20));
       const reviewCardLimit =
         config.reviewLimit === 'all' ? 300 : (typeof config.reviewLimit === 'number' ? config.reviewLimit : 50);
 
-      const [dueRes, newRes] = await Promise.all([
+      const [dueReviewsRes, learningRes, newRes] = await Promise.all([
+        // 1. Due reviews: Graduated cards due today or earlier
         baseQuery()
-          .in('state', ['learning', 'review', 'relearning'])
-          .lte('due', now)
+          .eq('state', 'review')
+          .lte('due', nowStr)
           .order('due', { ascending: true })
           .limit(reviewCardLimit),
+        // 2. Intraday learning cards: Cards in 1m/10m steps for today
+        baseQuery()
+          .in('state', ['learning', 'relearning'])
+          .lte('due', endOfTodayStr)
+          .order('due', { ascending: true })
+          .limit(100),
+        // 3. New cards
         newCardLimit > 0
           ? baseQuery()
               .eq('state', 'new')
@@ -50,11 +66,16 @@ export async function getStudyCards(config: DeckConfig): Promise<{
           : Promise.resolve({ data: [] as SRSCard[], error: null }),
       ]);
 
-      if (dueRes.error) throw dueRes.error;
+      if (dueReviewsRes.error) throw dueReviewsRes.error;
+      if (learningRes.error) throw learningRes.error;
       if (newRes.error) throw newRes.error;
 
-      // Anki queue order: Due reviews first, followed by New cards
-      cards = [...((dueRes.data as SRSCard[]) || []), ...((newRes.data as SRSCard[]) || [])];
+      // Anki queue priority: Due reviews + Intraday learning + New cards
+      cards = [
+        ...((dueReviewsRes.data as SRSCard[]) || []),
+        ...((learningRes.data as SRSCard[]) || []),
+        ...((newRes.data as SRSCard[]) || []),
+      ];
     } else if (config.mode === 'new_only') {
       // New cards only
       const newCardLimit =
@@ -68,18 +89,30 @@ export async function getStudyCards(config: DeckConfig): Promise<{
       if (error) throw error;
       cards = (data as SRSCard[]) || [];
     } else {
-      // Due cards only
+      // Due & Learning cards only
       const reviewCardLimit =
         config.reviewLimit === 'all' ? 300 : (typeof config.reviewLimit === 'number' ? config.reviewLimit : (config.limit || 50));
 
-      const { data, error } = await baseQuery()
-        .in('state', ['learning', 'review', 'relearning'])
-        .lte('due', now)
-        .order('due', { ascending: true })
-        .limit(reviewCardLimit);
+      const [dueReviewsRes, learningRes] = await Promise.all([
+        baseQuery()
+          .eq('state', 'review')
+          .lte('due', nowStr)
+          .order('due', { ascending: true })
+          .limit(reviewCardLimit),
+        baseQuery()
+          .in('state', ['learning', 'relearning'])
+          .lte('due', endOfTodayStr)
+          .order('due', { ascending: true })
+          .limit(100),
+      ]);
 
-      if (error) throw error;
-      cards = (data as SRSCard[]) || [];
+      if (dueReviewsRes.error) throw dueReviewsRes.error;
+      if (learningRes.error) throw learningRes.error;
+
+      cards = [
+        ...((dueReviewsRes.data as SRSCard[]) || []),
+        ...((learningRes.data as SRSCard[]) || []),
+      ];
     }
 
     if (cards.length === 0) {

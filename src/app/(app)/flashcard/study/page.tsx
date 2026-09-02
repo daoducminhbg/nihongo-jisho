@@ -30,7 +30,7 @@ export default async function FlashcardStudyPage({ searchParams }: StudyPageProp
 
   const jlptLevels: JLPTLevel[] = params.jlpt
     ? (params.jlpt.split(',') as JLPTLevel[])
-    : ['N5', 'N4', 'N3'];
+    : ['N5', 'N4', 'N3', 'N2', 'N1'];
 
   const direction: CardDirection =
     params.direction === 'VN_TO_JP' ? 'VN_TO_JP' : 'JP_TO_VN';
