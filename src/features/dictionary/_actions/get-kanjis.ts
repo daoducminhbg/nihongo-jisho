@@ -37,10 +37,12 @@ export async function getKanjis({
     }
 
     if (search && search.trim().length > 0) {
-      const term = search.trim();
-      query = query.or(
-        `character.ilike.%${term}%,han_viet.ilike.%${term}%,meaning.ilike.%${term}%,onyomi.ilike.%${term}%,kunyomi.ilike.%${term}%`
-      );
+      const term = search.trim().replace(/[,%]/g, '');
+      if (term.length > 0) {
+        query = query.or(
+          `character.ilike.%${term}%,han_viet.ilike.%${term}%,meaning.ilike.%${term}%,onyomi.ilike.%${term}%,kunyomi.ilike.%${term}%`
+        );
+      }
     }
 
     const from = (page - 1) * limit;

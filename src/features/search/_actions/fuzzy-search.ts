@@ -42,36 +42,27 @@ export async function searchDictionary(query: string): Promise<SearchAllResponse
 
     const { original, hiragana, katakana } = normalizeSearchQuery(trimmed);
 
-    // Search across Vocabularies
-    const vocabFilter = `word.ilike.%${original}%,word.ilike.%${hiragana}%,furigana.ilike.%${original}%,furigana.ilike.%${hiragana}%,meaning.ilike.%${original}%,kanji.ilike.%${original}%`;
-    const { data: vocabData } = await supabase
-      .from('vocabularies')
-      .select('*')
-      .eq('user_id', user.id)
-      .or(vocabFilter)
-      .limit(30);
+    // Escape special chars for PostgREST
+    const esc = (s: string) => s.replace(/[,%]/g, '');
+    const safeOriginal = esc(original);
+    const safeHiragana = esc(hiragana);
+    const safeKatakana = esc(katakana);
 
-    // Search across Kanjis
-    const kanjiFilter = `character.ilike.%${original}%,han_viet.ilike.%${original}%,meaning.ilike.%${original}%,onyomi.ilike.%${katakana}%,kunyomi.ilike.%${hiragana}%`;
-    const { data: kanjiData } = await supabase
-      .from('kanjis')
-      .select('*')
-      .eq('user_id', user.id)
-      .or(kanjiFilter)
-      .limit(30);
+    const [vocabResult, kanjiResult, grammarResult] = await Promise.all([
+      supabase.from('vocabularies').select('*').eq('user_id', user.id)
+        .or(`word.ilike.%${safeOriginal}%,word.ilike.%${safeHiragana}%,furigana.ilike.%${safeOriginal}%,furigana.ilike.%${safeHiragana}%,meaning.ilike.%${safeOriginal}%,kanji.ilike.%${safeOriginal}%`)
+        .limit(30),
+      supabase.from('kanjis').select('*').eq('user_id', user.id)
+        .or(`character.ilike.%${safeOriginal}%,han_viet.ilike.%${safeOriginal}%,meaning.ilike.%${safeOriginal}%,onyomi.ilike.%${safeKatakana}%,kunyomi.ilike.%${safeHiragana}%`)
+        .limit(30),
+      supabase.from('grammars').select('*').eq('user_id', user.id)
+        .or(`title.ilike.%${safeOriginal}%,title.ilike.%${safeHiragana}%,structure.ilike.%${safeOriginal}%,explanation.ilike.%${safeOriginal}%`)
+        .limit(30),
+    ]);
 
-    // Search across Grammars
-    const grammarFilter = `title.ilike.%${original}%,title.ilike.%${hiragana}%,structure.ilike.%${original}%,explanation.ilike.%${original}%`;
-    const { data: grammarData } = await supabase
-      .from('grammars')
-      .select('*')
-      .eq('user_id', user.id)
-      .or(grammarFilter)
-      .limit(30);
-
-    const vocabularies = (vocabData as Vocabulary[]) || [];
-    const kanjis = (kanjiData as Kanji[]) || [];
-    const grammars = (grammarData as Grammar[]) || [];
+    const vocabularies = (vocabResult.data as Vocabulary[]) || [];
+    const kanjis = (kanjiResult.data as Kanji[]) || [];
+    const grammars = (grammarResult.data as Grammar[]) || [];
     const totalCount = vocabularies.length + kanjis.length + grammars.length;
 
     return {

@@ -37,10 +37,12 @@ export async function getVocabularies({
     }
 
     if (search && search.trim().length > 0) {
-      const term = search.trim();
-      query = query.or(
-        `word.ilike.%${term}%,furigana.ilike.%${term}%,meaning.ilike.%${term}%,kanji.ilike.%${term}%`
-      );
+      const term = search.trim().replace(/[,%]/g, '');
+      if (term.length > 0) {
+        query = query.or(
+          `word.ilike.%${term}%,furigana.ilike.%${term}%,meaning.ilike.%${term}%,kanji.ilike.%${term}%`
+        );
+      }
     }
 
     const from = (page - 1) * limit;

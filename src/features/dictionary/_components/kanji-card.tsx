@@ -61,6 +61,7 @@ export function KanjiCard({ kanji, onDelete }: KanjiCardProps) {
                 disabled={isDeleting}
                 onClick={handleDelete}
                 title="Xóa Kanji"
+                aria-label="Xóa Kanji"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

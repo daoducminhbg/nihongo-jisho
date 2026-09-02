@@ -27,41 +27,24 @@ export async function getQueueStats(): Promise<{
 
     const now = new Date().toISOString();
 
-    // Due cards count
-    const { count: dueCount } = await supabase
-      .from('srs_cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .in('state', ['learning', 'review', 'relearning'])
-      .lte('due', now);
-
-    // New cards count
-    const { count: newCount } = await supabase
-      .from('srs_cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('state', 'new');
-
-    // Learning cards count
-    const { count: learningCount } = await supabase
-      .from('srs_cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .in('state', ['learning', 'relearning']);
-
-    // Total cards count
-    const { count: totalCards } = await supabase
-      .from('srs_cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id);
+    const [dueResult, newResult, learningResult, totalResult] = await Promise.all([
+      supabase.from('srs_cards').select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id).in('state', ['learning', 'review', 'relearning']).lte('due', now),
+      supabase.from('srs_cards').select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id).eq('state', 'new'),
+      supabase.from('srs_cards').select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id).in('state', ['learning', 'relearning']),
+      supabase.from('srs_cards').select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id),
+    ]);
 
     return {
       success: true,
       stats: {
-        dueCount: dueCount || 0,
-        newCount: newCount || 0,
-        learningCount: learningCount || 0,
-        totalCards: totalCards || 0,
+        dueCount: dueResult.count || 0,
+        newCount: newResult.count || 0,
+        learningCount: learningResult.count || 0,
+        totalCards: totalResult.count || 0,
       },
     };
   } catch (error) {

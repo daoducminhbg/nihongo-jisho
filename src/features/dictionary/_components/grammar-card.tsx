@@ -57,6 +57,7 @@ export function GrammarCard({ grammar, onDelete }: GrammarCardProps) {
           disabled={isDeleting}
           onClick={handleDelete}
           title="Xóa ngữ pháp"
+          aria-label="Xóa ngữ pháp"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </Button>

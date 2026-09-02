@@ -37,10 +37,12 @@ export async function getGrammars({
     }
 
     if (search && search.trim().length > 0) {
-      const term = search.trim();
-      query = query.or(
-        `title.ilike.%${term}%,structure.ilike.%${term}%,explanation.ilike.%${term}%`
-      );
+      const term = search.trim().replace(/[,%]/g, '');
+      if (term.length > 0) {
+        query = query.or(
+          `title.ilike.%${term}%,structure.ilike.%${term}%,explanation.ilike.%${term}%`
+        );
+      }
     }
 
     const from = (page - 1) * limit;

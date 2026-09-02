@@ -23,6 +23,7 @@ export function ScanResults({ initialResult, onReset, onSaved }: ScanResultsProp
   const [grammars, setGrammars] = useState<ScannedGrammar[]>(initialResult.grammars);
 
   const [isSaving, setIsSaving] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -85,6 +86,7 @@ export function ScanResults({ initialResult, onReset, onSaved }: ScanResultsProp
       });
 
       if (res.success) {
+        setHasSaved(true);
         setSaveSuccess(res.message || 'Đã lưu thành công vào kho cá nhân!');
         if (onSaved) onSaved();
       } else {
@@ -139,15 +141,25 @@ export function ScanResults({ initialResult, onReset, onSaved }: ScanResultsProp
           <Button
             size="sm"
             onClick={handleSave}
-            disabled={totalSelected === 0 || isSaving}
+            disabled={totalSelected === 0 || isSaving || hasSaved}
             className="bg-primary text-primary-foreground font-medium"
           >
-            {isSaving ? (
-              <LoadingSpinner className="w-4 h-4 mr-1.5" />
+            {hasSaved ? (
+              <>
+                <Check className="w-4 h-4 mr-1.5" />
+                Đã lưu thành công
+              </>
+            ) : isSaving ? (
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-1.5" />
+                Đang lưu...
+              </>
             ) : (
-              <Bookmark className="w-4 h-4 mr-1.5" />
+              <>
+                <Bookmark className="w-4 h-4 mr-1.5" />
+                Lưu vào kho ({totalSelected})
+              </>
             )}
-            Lưu vào kho ({totalSelected})
           </Button>
         </div>
       </div>

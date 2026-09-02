@@ -55,38 +55,29 @@ export async function getStudyCards(config: DeckConfig): Promise<{
     const kanjiIds = cards.filter((c) => c.item_type === 'kanji').map((c) => c.item_id);
     const grammarIds = cards.filter((c) => c.item_type === 'grammar').map((c) => c.item_id);
 
-    // Fetch Vocabularies
-    let vocabMap = new Map<string, Vocabulary>();
-    if (vocabIds.length > 0) {
-      let vQuery = supabase.from('vocabularies').select('*').in('id', vocabIds);
-      if (config.jlptLevels.length > 0) {
-        vQuery = vQuery.in('jlpt_level', config.jlptLevels);
-      }
-      const { data: vData } = await vQuery;
-      vocabMap = new Map(((vData as Vocabulary[]) || []).map((v) => [v.id, v]));
-    }
-
-    // Fetch Kanjis
-    let kanjiMap = new Map<string, Kanji>();
-    if (kanjiIds.length > 0) {
-      let kQuery = supabase.from('kanjis').select('*').in('id', kanjiIds);
-      if (config.jlptLevels.length > 0) {
-        kQuery = kQuery.in('jlpt_level', config.jlptLevels);
-      }
-      const { data: kData } = await kQuery;
-      kanjiMap = new Map(((kData as Kanji[]) || []).map((k) => [k.id, k]));
-    }
-
-    // Fetch Grammars
-    let grammarMap = new Map<string, Grammar>();
-    if (grammarIds.length > 0) {
-      let gQuery = supabase.from('grammars').select('*').in('id', grammarIds);
-      if (config.jlptLevels.length > 0) {
-        gQuery = gQuery.in('jlpt_level', config.jlptLevels);
-      }
-      const { data: gData } = await gQuery;
-      grammarMap = new Map(((gData as Grammar[]) || []).map((g) => [g.id, g]));
-    }
+    const [vocabMap, kanjiMap, grammarMap] = await Promise.all([
+      (async () => {
+        if (vocabIds.length === 0) return new Map<string, Vocabulary>();
+        let q = supabase.from('vocabularies').select('*').in('id', vocabIds);
+        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        const { data } = await q;
+        return new Map(((data as Vocabulary[]) || []).map(v => [v.id, v]));
+      })(),
+      (async () => {
+        if (kanjiIds.length === 0) return new Map<string, Kanji>();
+        let q = supabase.from('kanjis').select('*').in('id', kanjiIds);
+        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        const { data } = await q;
+        return new Map(((data as Kanji[]) || []).map(k => [k.id, k]));
+      })(),
+      (async () => {
+        if (grammarIds.length === 0) return new Map<string, Grammar>();
+        let q = supabase.from('grammars').select('*').in('id', grammarIds);
+        if (config.jlptLevels.length > 0) q = q.in('jlpt_level', config.jlptLevels);
+        const { data } = await q;
+        return new Map(((data as Grammar[]) || []).map(g => [g.id, g]));
+      })(),
+    ]);
 
     // Assemble flashcard items
     const flashcardItems: FlashcardItem[] = [];

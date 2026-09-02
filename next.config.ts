@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb', // For image uploads
     },
+    optimizePackageImports: ['lucide-react', 'date-fns', 'wanakana'],
   },
 };
 

@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/scan';
+  const rawNext = searchParams.get('next') ?? '/scan';
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/scan';
 
   if (code) {
     const supabase = await createClient();
@@ -22,5 +23,8 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_error`);
+  const forwardedHost = request.headers.get('x-forwarded-host');
+  const isLocalEnv = process.env.NODE_ENV === 'development';
+  const errorOrigin = !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : origin;
+  return NextResponse.redirect(`${errorOrigin}/login?error=auth_error`);
 }

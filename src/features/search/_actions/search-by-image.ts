@@ -33,14 +33,24 @@ export async function searchByContext(
 
     const parsed = await analyzeJapanese(geminiInput);
 
-    // Query learned vocabularies matching words in this sentence
+    // Query learned items matching words, characters, and patterns in this sentence
     const wordList = parsed.vocabularies.map((v) => v.word);
-    const { data: matchedVocabData } = await supabase
-      .from('vocabularies')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('word', wordList);
+    const kanjiList = parsed.kanjis.map((k) => k.character);
+    const grammarList = parsed.grammars.map((g) => g.title);
 
+    const [vocabResult, kanjiResult, grammarResult] = await Promise.all([
+      wordList.length > 0
+        ? supabase.from('vocabularies').select('*').eq('user_id', user.id).in('word', wordList)
+        : Promise.resolve({ data: [] }),
+      kanjiList.length > 0
+        ? supabase.from('kanjis').select('*').eq('user_id', user.id).in('character', kanjiList)
+        : Promise.resolve({ data: [] }),
+      grammarList.length > 0
+        ? supabase.from('grammars').select('*').eq('user_id', user.id).in('title', grammarList)
+        : Promise.resolve({ data: [] })
+    ]);
+
+    const matchedVocabData = vocabResult.data;
     const matchedVocabMap = new Map(
       ((matchedVocabData as Vocabulary[]) || []).map((v) => [v.word, v])
     );
@@ -62,14 +72,7 @@ export async function searchByContext(
       }
     }
 
-    // Query learned kanjis matching characters in this sentence
-    const kanjiList = parsed.kanjis.map((k) => k.character);
-    const { data: matchedKanjiData } = await supabase
-      .from('kanjis')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('character', kanjiList);
-
+    const matchedKanjiData = kanjiResult.data;
     const matchedKanjiMap = new Map(
       ((matchedKanjiData as Kanji[]) || []).map((k) => [k.character, k])
     );
@@ -91,14 +94,7 @@ export async function searchByContext(
       }
     }
 
-    // Query learned grammars matching patterns in this sentence
-    const grammarList = parsed.grammars.map((g) => g.title);
-    const { data: matchedGrammarData } = await supabase
-      .from('grammars')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('title', grammarList);
-
+    const matchedGrammarData = grammarResult.data;
     const matchedGrammarMap = new Map(
       ((matchedGrammarData as Grammar[]) || []).map((g) => [g.title, g])
     );

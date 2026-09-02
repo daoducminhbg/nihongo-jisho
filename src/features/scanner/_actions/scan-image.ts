@@ -19,14 +19,24 @@ export async function scanContent(
 
     const raw = await analyzeJapanese(geminiInput);
 
-    // Check for duplicates - Vocab
+    // Check for duplicates in parallel
     const vocabWords = raw.vocabularies.map(v => v.word);
-    const { data: existingVocab } = await supabase
-      .from('vocabularies')
-      .select('id, word, frequency')
-      .eq('user_id', user.id)
-      .in('word', vocabWords);
+    const kanjiChars = raw.kanjis.map(k => k.character);
+    const grammarTitles = raw.grammars.map(g => g.title);
 
+    const [vocabResult, kanjiResult, grammarResult] = await Promise.all([
+      vocabWords.length > 0
+        ? supabase.from('vocabularies').select('id, word, frequency').eq('user_id', user.id).in('word', vocabWords)
+        : Promise.resolve({ data: [] }),
+      kanjiChars.length > 0
+        ? supabase.from('kanjis').select('id, character').eq('user_id', user.id).in('character', kanjiChars)
+        : Promise.resolve({ data: [] }),
+      grammarTitles.length > 0
+        ? supabase.from('grammars').select('id, title').eq('user_id', user.id).in('title', grammarTitles)
+        : Promise.resolve({ data: [] })
+    ]);
+
+    const existingVocab = vocabResult.data;
     const existingVocabMap = new Map(
       (existingVocab || []).map(v => [v.word, { id: v.id as string, frequency: v.frequency as number }])
     );
@@ -42,14 +52,7 @@ export async function scanContent(
       };
     });
 
-    // Check for duplicates - Kanji
-    const kanjiChars = raw.kanjis.map(k => k.character);
-    const { data: existingKanji } = await supabase
-      .from('kanjis')
-      .select('id, character')
-      .eq('user_id', user.id)
-      .in('character', kanjiChars);
-
+    const existingKanji = kanjiResult.data;
     const existingKanjiMap = new Map(
       (existingKanji || []).map(k => [k.character as string, k.id as string])
     );
@@ -64,14 +67,7 @@ export async function scanContent(
       };
     });
 
-    // Check for duplicates - Grammar
-    const grammarTitles = raw.grammars.map(g => g.title);
-    const { data: existingGrammar } = await supabase
-      .from('grammars')
-      .select('id, title')
-      .eq('user_id', user.id)
-      .in('title', grammarTitles);
-
+    const existingGrammar = grammarResult.data;
     const existingGrammarMap = new Map(
       (existingGrammar || []).map(g => [g.title as string, g.id as string])
     );

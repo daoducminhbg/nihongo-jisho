@@ -12,6 +12,47 @@ interface ImageUploaderProps {
 const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+const compressImage = (file: File): Promise<{ base64: string; mimeType: string; dataUrl: string }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > 1600 || height > 1600) {
+          const scale = 1600 / Math.max(width, height);
+          width *= scale;
+          height *= scale;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Không thể tạo canvas'));
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const mimeType = 'image/jpeg';
+        const dataUrl = canvas.toDataURL(mimeType, 0.85);
+        const base64 = dataUrl.split(',')[1];
+
+        resolve({ base64, mimeType, dataUrl });
+      };
+      img.onerror = () => reject(new Error('Không thể tải ảnh'));
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error('Không thể đọc file ảnh'));
+    reader.readAsDataURL(file);
+  });
+};
+
 export function ImageUploader({ onImageReady }: ImageUploaderProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -19,7 +60,7 @@ export function ImageUploader({ onImageReady }: ImageUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const processFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       setError(null);
 
       if (!ACCEPTED_TYPES.includes(file.type)) {
@@ -32,19 +73,13 @@ export function ImageUploader({ onImageReady }: ImageUploaderProps) {
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
+      try {
+        const { base64, mimeType, dataUrl } = await compressImage(file);
         setImagePreview(dataUrl);
-
-        // Extract base64 without the data:...;base64, prefix
-        const base64 = dataUrl.split(',')[1];
-        onImageReady(base64, file.type);
-      };
-      reader.onerror = () => {
-        setError('Không thể đọc file ảnh');
-      };
-      reader.readAsDataURL(file);
+        onImageReady(base64, mimeType);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Lỗi xử lý ảnh');
+      }
     },
     [onImageReady]
   );
@@ -165,6 +200,7 @@ export function ImageUploader({ onImageReady }: ImageUploaderProps) {
             size="icon-sm"
             className="absolute top-2 right-2"
             onClick={clearImage}
+            aria-label="Xóa ảnh"
           >
             <X className="h-4 w-4" />
           </Button>

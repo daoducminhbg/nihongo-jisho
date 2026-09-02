@@ -54,23 +54,34 @@ export function ImageCropper({ imageSrc, onCropComplete, onSkip }: ImageCropperP
       pixelHeight = crop.height * scaleY;
     }
 
+    const sourceX = pixelX;
+    const sourceY = pixelY;
+    const sourceWidth = pixelWidth;
+    const sourceHeight = pixelHeight;
+
+    if (pixelWidth > 1600 || pixelHeight > 1600) {
+      const scale = 1600 / Math.max(pixelWidth, pixelHeight);
+      pixelWidth *= scale;
+      pixelHeight *= scale;
+    }
+
     canvas.width = pixelWidth;
     canvas.height = pixelHeight;
 
     ctx.drawImage(
       image,
-      pixelX,
-      pixelY,
-      pixelWidth,
-      pixelHeight,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
       0,
       0,
       pixelWidth,
       pixelHeight
     );
 
-    const mimeType = 'image/png';
-    const dataUrl = canvas.toDataURL(mimeType);
+    const mimeType = 'image/jpeg';
+    const dataUrl = canvas.toDataURL(mimeType, 0.85);
     const base64 = dataUrl.split(',')[1];
 
     setIsCropping(false);
