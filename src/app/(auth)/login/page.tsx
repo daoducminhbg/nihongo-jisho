@@ -193,8 +193,8 @@ function AuthForm() {
         {/* Japanese-themed Brand Header */}
         <div className="flex flex-col items-center justify-center space-y-2">
           <div className="flex items-center gap-2">
-            <div className="size-11 rounded-xl bg-red-600/10 dark:bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 border border-red-500/20 shadow-sm">
-              <Languages className="size-6" />
+            <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20 shadow-sm font-japanese font-bold text-2xl">
+              語
             </div>
             <div className="text-left">
               <div className="flex items-center gap-1.5">

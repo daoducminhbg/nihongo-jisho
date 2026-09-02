@@ -185,7 +185,9 @@ export function Topbar({ user }: TopbarProps) {
             <div>
               <SheetHeader className="p-4 border-b border-border">
                 <SheetTitle className="flex items-center gap-2.5 text-left">
-                  <span className="text-2xl">🐟</span>
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-japanese font-bold text-lg border border-primary/20 shadow-sm">
+                    語
+                  </div>
                   <div className="flex flex-col">
                     <span className="font-bold text-base leading-tight">
                       Nihongo <span className="text-primary">Jisho</span>

@@ -168,8 +168,8 @@ export function Sidebar({ user, className }: SidebarProps) {
               isCollapsed && 'justify-center w-full'
             )}
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-lg">
-              🐟
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-japanese font-bold text-lg border border-primary/20 shadow-sm">
+              語
             </div>
             {!isCollapsed && (
               <div className="flex flex-col">
