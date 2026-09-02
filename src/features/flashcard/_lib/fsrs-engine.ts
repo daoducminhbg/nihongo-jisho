@@ -17,10 +17,36 @@ export interface AnkiScheduleResult {
  *
  * Ratings:
  * 1 = Again (Fail)
- * 2 = Hard
- * 3 = Good (Pass)
- * 4 = Easy
+/**
+ * Interval Fuzzing Algorithm from Anki v3 (rslib/src/scheduler/fuzz.rs)
+ * Prevents cards reviewed on the same day from clustering into future review spikes.
  */
+export function applyIntervalFuzz(interval: number, minBound: number = 1, maxBound: number = 36500): number {
+  if (interval < 2.5) return interval;
+  let minIvl = interval;
+  let maxIvl = interval;
+
+  if (interval === 3) {
+    minIvl = 2;
+    maxIvl = 4;
+  } else if (interval < 7) {
+    minIvl = interval - 1;
+    maxIvl = interval + 1;
+  } else if (interval < 30) {
+    const delta = Math.max(2, Math.round(interval * 0.15));
+    minIvl = interval - delta;
+    maxIvl = interval + delta;
+  } else {
+    const delta = Math.max(4, Math.round(interval * 0.05));
+    minIvl = interval - delta;
+    maxIvl = interval + delta;
+  }
+
+  minIvl = Math.max(minBound, minIvl);
+  maxIvl = Math.min(maxBound, maxIvl);
+  return Math.floor(Math.random() * (maxIvl - minIvl + 1)) + minIvl;
+}
+
 export function calculateAnkiSchedule(
   card: SRSCard,
   rating: 1 | 2 | 3 | 4,
@@ -142,7 +168,8 @@ export function calculateAnkiSchedule(
       // Good: f' = f, i3 = max(i2 + 1, (i + d/2) * (f / 1000) * m)
       nextFactor = f;
       const i2 = Math.max(i + 1, Math.round((i + d / 4) * 1.2 * m));
-      const i3 = Math.max(i2 + 1, Math.round((i + d / 2) * (f / 1000) * m));
+      let i3 = Math.max(i2 + 1, Math.round((i + d / 2) * (f / 1000) * m));
+      i3 = applyIntervalFuzz(i3, i2 + 1);
       nextScheduledDays = i3;
       nextDue = new Date(now.getTime() + i3 * 24 * 3600 * 1000);
       nextState = 'review';
@@ -151,7 +178,8 @@ export function calculateAnkiSchedule(
       nextFactor = Math.max(1300, f + 150);
       const i2 = Math.max(i + 1, Math.round((i + d / 4) * 1.2 * m));
       const i3 = Math.max(i2 + 1, Math.round((i + d / 2) * (f / 1000) * m));
-      const i4 = Math.max(i3 + 1, Math.round((i + d) * (f / 1000) * m * m4));
+      let i4 = Math.max(i3 + 1, Math.round((i + d) * (f / 1000) * m * m4));
+      i4 = applyIntervalFuzz(i4, i3 + 1);
       nextScheduledDays = i4;
       nextDue = new Date(now.getTime() + i4 * 24 * 3600 * 1000);
       nextState = 'review';
